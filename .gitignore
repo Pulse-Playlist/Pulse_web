@@ -15,8 +15,8 @@ ENV/
 
 # Environment variables & Private Keys
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 *.p8
 
 # Node / Next.js (for future web directory)

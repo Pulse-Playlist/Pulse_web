@@ -66,20 +66,35 @@ def save_songs_json(songs: List[Dict[str, Any]], path: Path = SONGS_JSON_PATH) -
 
 def upsert_to_supabase(songs: List[Dict[str, Any]]) -> None:
     """Upserts analyzed song records to Supabase if credentials are configured."""
-    load_dotenv()
-    supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
+    load_dotenv(BASE_DIR / ".env")
+    supabase_url = (os.getenv("SUPABASE_URL") or "").rstrip("/")
+    supabase_key = (
+        os.getenv("SUPABASE_SECRET_KEY")
+        or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        or os.getenv("SUPABASE_KEY")
+    )
     if not supabase_url or not supabase_key:
         return
 
     try:
-        from supabase import create_client
+        import requests
 
-        client = create_client(supabase_url, supabase_key)
-        batch_size = 100
+        endpoint = f"{supabase_url}/rest/v1/songs?on_conflict=normalized_key"
+        headers: Dict[str, str] = {
+            "apikey": supabase_key,
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
+        }
+        if not supabase_key.startswith("sb_"):
+            headers["Authorization"] = f"Bearer {supabase_key}"
+
+        batch_size = 200
         for idx in range(0, len(songs), batch_size):
             batch = songs[idx : idx + batch_size]
-            client.table("songs").upsert(batch, on_conflict="normalized_key").execute()
+            res = requests.post(endpoint, headers=headers, json=batch, timeout=20)
+            if res.status_code not in (200, 201, 204):
+                print(f"[WARN] Supabase batch upsert returned {res.status_code}: {res.text[:200]}")
+                return
         print(f"[SUPABASE] Successfully upserted {len(songs)} tracks to public.songs.")
     except Exception as exc:
         print(f"[WARN] Supabase upsert failed: {exc}")
