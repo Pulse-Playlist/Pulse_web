@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Song, GenreTag, SongsResponse } from '@/types/song';
+import { Song, GenreTag, SongsResponse, AppLanguage, SavedPlaylist, getSongTitle } from '@/types/song';
 import { generatePlaylist, getRecommendedSongs } from '@/lib/playlistGenerator';
 import { HomeScreen } from '@/components/HomeScreen';
 import { BpmScreen } from '@/components/BpmScreen';
@@ -22,6 +22,9 @@ export default function Page() {
   const [allSongs, setAllSongs] = useState<Song[]>([]);
   const [isLoadingSongs, setIsLoadingSongs] = useState(true);
 
+  // Community Feed Playlists
+  const [communityPlaylists, setCommunityPlaylists] = useState<SavedPlaylist[]>([]);
+
   // User input settings
   const [targetBpm, setTargetBpm] = useState<number>(160);
   const [selectedCategories, setSelectedCategories] = useState<GenreTag[]>(['hiphop', 'rock', 'band']);
@@ -29,12 +32,16 @@ export default function Page() {
   // Playlist & Recommendation state
   const [playlist, setPlaylist] = useState<Song[]>([]);
   const [recommendedSongs, setRecommendedSongs] = useState<Song[]>([]);
+  const [customPlaylistName, setCustomPlaylistName] = useState<string>('');
 
   // Continuous playback state
   const [isContinuousPlay, setIsContinuousPlay] = useState<boolean>(true);
 
   // Dark / Light Theme state
   const [isDark, setIsDark] = useState<boolean>(true);
+
+  // Korean / English Language State
+  const [lang, setLang] = useState<AppLanguage>('ko');
 
   // In-app Toast message
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -50,6 +57,7 @@ export default function Page() {
   const playlistRef = useRef<Song[]>(playlist);
   const currentPlayingSongRef = useRef<Song | null>(currentPlayingSong);
   const isContinuousPlayRef = useRef<boolean>(isContinuousPlay);
+  const langRef = useRef<AppLanguage>(lang);
 
   useEffect(() => {
     playlistRef.current = playlist;
@@ -62,6 +70,10 @@ export default function Page() {
   useEffect(() => {
     isContinuousPlayRef.current = isContinuousPlay;
   }, [isContinuousPlay]);
+
+  useEffect(() => {
+    langRef.current = lang;
+  }, [lang]);
 
   // Toast notification helper
   const showToast = useCallback((text: string, type: 'info' | 'success' | 'warning' = 'info') => {
@@ -88,6 +100,18 @@ export default function Page() {
     }
   }, []);
 
+  // Initialize language from localStorage
+  useEffect(() => {
+    try {
+      const storedLang = localStorage.getItem('pulse_lang');
+      if (storedLang === 'en' || storedLang === 'ko') {
+        setLang(storedLang);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
   const handleToggleTheme = () => {
     setIsDark((prev) => {
       const next = !prev;
@@ -106,6 +130,18 @@ export default function Page() {
     });
   };
 
+  const handleToggleLang = () => {
+    setLang((prev) => {
+      const next: AppLanguage = prev === 'ko' ? 'en' : 'ko';
+      try {
+        localStorage.setItem('pulse_lang', next);
+      } catch {
+        // Ignore localStorage errors
+      }
+      return next;
+    });
+  };
+
   // Internal audio play helper
   const playTrackInternal = useCallback(
     (song: Song) => {
@@ -113,7 +149,12 @@ export default function Page() {
       const audio = audioRef.current;
 
       if (!song.preview_url) {
-        showToast('이 곡은 미리듣기를 지원하지 않습니다', 'info');
+        showToast(
+          langRef.current === 'ko'
+            ? '이 곡은 미리듣기를 지원하지 않습니다'
+            : 'Preview not available for this track',
+          'info'
+        );
         return;
       }
 
@@ -166,7 +207,11 @@ export default function Page() {
               .then(() => {
                 setCurrentPlayingSong(nextSong);
                 setIsPlayingAudio(true);
-                showToast(`▶️ 다음 곡: ${nextSong.title}`, 'info');
+                const title = getSongTitle(nextSong, langRef.current);
+                showToast(
+                  langRef.current === 'ko' ? `▶️ 다음 곡: ${title}` : `▶️ Next: ${title}`,
+                  'info'
+                );
               })
               .catch(() => {
                 setIsPlayingAudio(false);
@@ -182,7 +227,12 @@ export default function Page() {
 
     const onError = () => {
       setIsPlayingAudio(false);
-      showToast('미리듣기 음원을 재생할 수 없습니다', 'warning');
+      showToast(
+        langRef.current === 'ko'
+          ? '미리듣기 음원을 재생할 수 없습니다'
+          : 'Could not stream preview audio',
+        'warning'
+      );
     };
 
     audio.addEventListener('timeupdate', onTimeUpdate);
@@ -199,6 +249,24 @@ export default function Page() {
       audio.src = '';
     };
   }, [showToast]);
+
+  // Fetch community playlists
+  useEffect(() => {
+    async function loadCommunityPlaylists() {
+      try {
+        const res = await fetch('/api/playlists');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.playlists)) {
+            setCommunityPlaylists(data.playlists);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load community playlists:', err);
+      }
+    }
+    loadCommunityPlaylists();
+  }, []);
 
   // Fetch song database and handle initial URL query params (?bpm=170&cats=band,rock)
   useEffect(() => {
@@ -245,19 +313,72 @@ export default function Page() {
             const recs = getRecommendedSongs(songs, activeBpm, activeCats, initialPlaylist, 8);
             setPlaylist(initialPlaylist);
             setRecommendedSongs(recs);
+            setCustomPlaylistName(
+              langRef.current === 'ko' ? `PULSE ${activeBpm} BPM 러닝 믹스` : `PULSE ${activeBpm} BPM Mix`
+            );
             setStep('playlist');
-            showToast(`공유받은 ${activeBpm} BPM 러닝 믹스를 열었어요!`, 'success');
+            showToast(
+              langRef.current === 'ko'
+                ? `공유받은 ${activeBpm} BPM 러닝 믹스를 열었어요!`
+                : `Loaded shared ${activeBpm} BPM running mix!`,
+              'success'
+            );
           }
         }
       } catch (err) {
         console.error('Failed to load songs:', err);
-        showToast('곡 목록을 불러오지 못했습니다. 다시 시도해 주세요.', 'warning');
+        showToast(
+          langRef.current === 'ko'
+            ? '곡 목록을 불러오지 못했습니다. 다시 시도해 주세요.'
+            : 'Failed to load songs database.',
+          'warning'
+        );
       } finally {
         setIsLoadingSongs(false);
       }
     }
     loadSongs();
   }, [showToast]);
+
+  // Open community playlist from feed directly into PlaylistScreen
+  const handleSelectCommunityPlaylist = (selected: SavedPlaylist) => {
+    setTargetBpm(selected.bpm);
+    setSelectedCategories(selected.categories);
+    setPlaylist(selected.songs);
+    setCustomPlaylistName(selected.name);
+    setRecommendedSongs(
+      getRecommendedSongs(allSongs, selected.bpm, selected.categories, selected.songs, 8)
+    );
+    setStep('playlist');
+    showToast(
+      lang === 'ko'
+        ? `"${selected.name}" 플레이리스트를 열었어요!`
+        : `Loaded "${selected.name}" playlist!`,
+      'success'
+    );
+  };
+
+  // Like community playlist via PATCH /api/playlists
+  const handleLikePlaylist = async (id: string) => {
+    setCommunityPlaylists((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, likes: (p.likes || 0) + 1 } : p))
+    );
+
+    try {
+      await fetch('/api/playlists', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+    } catch (err) {
+      console.warn('Failed to PATCH likes:', err);
+    }
+  };
+
+  // When a playlist is saved in PlaylistScreen, update local community feed
+  const handleSavedToFeed = (saved: SavedPlaylist) => {
+    setCommunityPlaylists((prev) => [saved, ...prev.filter((p) => p.id !== saved.id)]);
+  };
 
   // Play / Pause song preview handler
   const handlePlaySong = (song: Song) => {
@@ -356,7 +477,10 @@ export default function Page() {
         return prev.filter((c) => c !== cat);
       }
       if (prev.length >= 3) {
-        showToast('최대 3개까지 선택할 수 있어요', 'warning');
+        showToast(
+          lang === 'ko' ? '최대 3개까지 선택할 수 있어요' : 'You can select up to 3 genres',
+          'warning'
+        );
         return prev;
       }
       return [...prev, cat];
@@ -366,7 +490,10 @@ export default function Page() {
   // Generate 30-song playlist
   const handleGeneratePlaylist = () => {
     if (!selectedCategories.length) {
-      showToast('장르를 1개 이상 선택해 주세요', 'warning');
+      showToast(
+        lang === 'ko' ? '장르를 1개 이상 선택해 주세요' : 'Please select at least 1 genre',
+        'warning'
+      );
       return;
     }
 
@@ -375,8 +502,16 @@ export default function Page() {
 
     setPlaylist(newPlaylist);
     setRecommendedSongs(recs);
+    setCustomPlaylistName(
+      lang === 'ko' ? `PULSE ${targetBpm} BPM 러닝 믹스` : `PULSE ${targetBpm} BPM Mix`
+    );
     setStep('playlist');
-    showToast(`${targetBpm} BPM ${newPlaylist.length}곡 플레이리스트가 완성되었어요!`, 'success');
+    showToast(
+      lang === 'ko'
+        ? `${targetBpm} BPM ${newPlaylist.length}곡 플레이리스트가 완성되었어요!`
+        : `Generated ${newPlaylist.length} tracks at ${targetBpm} BPM!`,
+      'success'
+    );
   };
 
   // Re-shuffle playlist handler
@@ -385,14 +520,22 @@ export default function Page() {
     const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, newPlaylist, 10);
     setPlaylist(newPlaylist);
     setRecommendedSongs(recs);
-    showToast(`${targetBpm}±2 BPM ${newPlaylist.length}곡으로 다시 섞었어요!`, 'success');
+    showToast(
+      lang === 'ko'
+        ? `${targetBpm}±2 BPM ${newPlaylist.length}곡으로 다시 섞었어요!`
+        : `Reshuffled ${newPlaylist.length} tracks at ${targetBpm}±2 BPM!`,
+      'success'
+    );
   };
 
   // Refresh recommendations handler
   const handleRefreshRecommendations = () => {
     const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, playlist, 10);
     setRecommendedSongs(recs);
-    showToast('추천곡 목록을 새로고침했어요', 'info');
+    showToast(
+      lang === 'ko' ? '추천곡 목록을 새로고침했어요' : 'Refreshed recommended tracks',
+      'info'
+    );
   };
 
   // Remove song from playlist
@@ -404,7 +547,10 @@ export default function Page() {
     const updated = playlist.filter((s) => (s.normalized_key || s.title + s.artist) !== songKey);
     setPlaylist(updated);
     setRecommendedSongs(getRecommendedSongs(allSongs, targetBpm, selectedCategories, updated, 10));
-    showToast('곡이 목록에서 삭제되었어요', 'info');
+    showToast(
+      lang === 'ko' ? '곡이 목록에서 삭제되었어요' : 'Track removed from playlist',
+      'info'
+    );
   };
 
   // Add recommended song to playlist
@@ -413,13 +559,22 @@ export default function Page() {
     setRecommendedSongs((prev) =>
       prev.filter((s) => (s.normalized_key || s.title + s.artist) !== (song.normalized_key || song.title + song.artist))
     );
-    showToast(`'${song.title}' 곡이 플레이리스트에 추가되었어요!`, 'success');
+    const songTitle = getSongTitle(song, lang);
+    showToast(
+      lang === 'ko'
+        ? `'${songTitle}' 곡이 플레이리스트에 추가되었어요!`
+        : `Added '${songTitle}' to playlist!`,
+      'success'
+    );
   };
 
   // Tap tempo confirmation handler
   const handleConfirmTapBpm = (measured: number) => {
     setTargetBpm(measured);
-    showToast(`${measured} BPM으로 설정되었습니다`, 'success');
+    showToast(
+      lang === 'ko' ? `${measured} BPM으로 설정되었습니다` : `Cadence set to ${measured} BPM`,
+      'success'
+    );
     setStep('category');
   };
 
@@ -444,8 +599,13 @@ export default function Page() {
               <HomeScreen
                 isDark={isDark}
                 onToggleTheme={handleToggleTheme}
+                lang={lang}
+                onToggleLang={handleToggleLang}
                 onStart={() => setStep('bpm')}
-                totalSongsCount={allSongs.length || 465}
+                onSelectPlaylist={handleSelectCommunityPlaylist}
+                communityPlaylists={communityPlaylists}
+                onLikePlaylist={handleLikePlaylist}
+                totalSongsCount={allSongs.length || 1320}
               />
             )}
 
@@ -458,6 +618,8 @@ export default function Page() {
                 onBack={() => setStep('home')}
                 isDark={isDark}
                 onToggleTheme={handleToggleTheme}
+                lang={lang}
+                onToggleLang={handleToggleLang}
               />
             )}
 
@@ -468,6 +630,8 @@ export default function Page() {
                 onBack={() => setStep('bpm')}
                 isDark={isDark}
                 onToggleTheme={handleToggleTheme}
+                lang={lang}
+                onToggleLang={handleToggleLang}
               />
             )}
 
@@ -480,6 +644,8 @@ export default function Page() {
                 isDark={isDark}
                 onToggleTheme={handleToggleTheme}
                 showToast={showToast}
+                lang={lang}
+                onToggleLang={handleToggleLang}
               />
             )}
 
@@ -502,6 +668,10 @@ export default function Page() {
                 isDark={isDark}
                 onToggleTheme={handleToggleTheme}
                 showToast={showToast}
+                lang={lang}
+                onToggleLang={handleToggleLang}
+                initialPlaylistName={customPlaylistName}
+                onSavedToFeed={handleSavedToFeed}
               />
             )}
           </motion.div>
@@ -518,6 +688,7 @@ export default function Page() {
             onClose={handleCloseMiniPlayer}
             onNext={handlePlayNextSong}
             onPrev={handlePlayPrevSong}
+            lang={lang}
           />
         )}
       </div>
