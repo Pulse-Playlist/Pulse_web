@@ -5,7 +5,8 @@ import Image from 'next/image';
 import { ChevronLeft, RotateCcw, Check, Sparkles, Flame } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from './ThemeToggle';
-import { playTapKick } from '@/lib/soundEffects';
+import { playTapKick, playPopSound } from '@/lib/soundEffects';
+import { AppLanguage } from '@/types/song';
 
 interface TapTempoScreenProps {
   initialBpm?: number;
@@ -13,6 +14,8 @@ interface TapTempoScreenProps {
   onBack: () => void;
   isDark: boolean;
   onToggleTheme: () => void;
+  lang?: AppLanguage;
+  onToggleLang?: () => void;
 }
 
 interface FloatingBadge {
@@ -31,6 +34,8 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
   onBack,
   isDark,
   onToggleTheme,
+  lang = 'ko',
+  onToggleLang,
 }) => {
   const [taps, setTaps] = useState<number[]>([]);
   const [measuredBpm, setMeasuredBpm] = useState<number | null>(null);
@@ -155,8 +160,8 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
         <button
           type="button"
           onClick={onBack}
-          aria-label="뒤로 가기"
-          className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors"
+          aria-label={lang === 'ko' ? '뒤로 가기' : 'Back'}
+          className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -165,7 +170,42 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
           <Image src={brandLogo} alt="PULSE" fill className="object-cover" />
         </div>
 
-        <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
+        <div className="flex items-center gap-2">
+          {onToggleLang && (
+            <motion.button
+              whileTap={{ scale: 0.94 }}
+              type="button"
+              onClick={() => {
+                playPopSound();
+                onToggleLang();
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black border transition-colors bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 cursor-pointer shadow-sm"
+              aria-label="언어 전환"
+            >
+              <span
+                className={
+                  lang === 'ko'
+                    ? 'text-black dark:text-[#C4FF00] font-black'
+                    : 'text-zinc-400 font-semibold'
+                }
+              >
+                한
+              </span>
+              <span className="text-zinc-400 text-[10px]">/</span>
+              <span
+                className={
+                  lang === 'en'
+                    ? 'text-black dark:text-[#C4FF00] font-black'
+                    : 'text-zinc-400 font-semibold'
+                }
+              >
+                EN
+              </span>
+            </motion.button>
+          )}
+
+          <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
+        </div>
       </header>
 
       {/* Main Tap Pad Section */}
@@ -173,10 +213,14 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
         <div className="mb-6">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[11px] font-extrabold text-zinc-600 dark:text-zinc-400 mb-2">
             <Sparkles className="w-3 h-3 text-[#C4FF00]" />
-            <span>발걸음 박자에 맞춰 연속으로 탭하세요</span>
+            <span>
+              {lang === 'ko'
+                ? '발걸음 박자에 맞춰 연속으로 탭하세요'
+                : 'Tap repeatedly to the rhythm of your stride'}
+            </span>
           </div>
           <h2 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white">
-            화면을 탭해서 템포 맞추기
+            {lang === 'ko' ? '화면을 탭해서 템포 맞추기' : 'Tap to Measure Your Cadence'}
           </h2>
         </div>
 
@@ -271,7 +315,13 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
                 color: hasEnoughTaps && activeColor !== '#C4FF00' ? '#ffffff' : '#000000',
               }}
             >
-              {measuredBpm ? 'BPM 감지됨' : '박자에 맞춰 탭'}
+              {measuredBpm
+                ? lang === 'ko'
+                  ? 'BPM 감지됨'
+                  : 'BPM Detected'
+                : lang === 'ko'
+                ? '박자에 맞춰 탭'
+                : 'Tap with Stride'}
             </span>
 
             {/* Tap progress indicator dots */}
@@ -297,8 +347,12 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
         <div className="flex flex-col items-center gap-2 mt-4">
           <p className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400">
             {hasEnoughTaps
-              ? '💡 꾸준히 탭할수록 더 정밀한 템포가 계산됩니다'
-              : '최소 2번 이상 리듬에 맞춰 탭해 주세요'}
+              ? lang === 'ko'
+                ? '💡 꾸준히 탭할수록 더 정밀한 템포가 계산됩니다'
+                : '💡 Keep tapping for a more precise average BPM'
+              : lang === 'ko'
+              ? '최소 2번 이상 리듬에 맞춰 탭해 주세요'
+              : 'Tap at least 2 times to measure tempo'}
           </p>
 
           {taps.length > 0 && (
@@ -310,7 +364,7 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
               className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white mt-1 py-1.5 px-3 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>초기화</span>
+              <span>{lang === 'ko' ? '초기화' : 'Reset'}</span>
             </motion.button>
           )}
         </div>
@@ -331,7 +385,15 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
           }`}
         >
           <Check className="w-5 h-5" />
-          <span>{hasEnoughTaps ? `${currentEffectiveBpm} BPM으로 설정 완료` : '박자에 맞춰 탭해 주세요'}</span>
+          <span>
+            {hasEnoughTaps
+              ? lang === 'ko'
+                ? `${currentEffectiveBpm} BPM으로 설정 완료`
+                : `Confirm ${currentEffectiveBpm} BPM`
+              : lang === 'ko'
+              ? '박자에 맞춰 탭해 주세요'
+              : 'Tap to the rhythm'}
+          </span>
         </motion.button>
       </footer>
     </div>

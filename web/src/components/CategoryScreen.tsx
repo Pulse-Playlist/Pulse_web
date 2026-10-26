@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { ChevronLeft, Check, ArrowRight, Layers, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { GenreTag } from '@/types/song';
+import { GenreTag, AppLanguage } from '@/types/song';
 import { ThemeToggle } from './ThemeToggle';
 import { playPopSound, playSuccessFanfare, playDialTick } from '@/lib/soundEffects';
 
@@ -17,21 +17,23 @@ interface CategoryScreenProps {
   isDark: boolean;
   onToggleTheme: () => void;
   showToast: (text: string, type?: 'info' | 'success' | 'warning') => void;
+  lang?: AppLanguage;
+  onToggleLang?: () => void;
 }
 
 interface CategoryItem {
   id: GenreTag;
-  name: string;
+  name: Record<AppLanguage, string>;
   sub: string;
   icon: string;
   accentColor: string;
 }
 
 const CATEGORIES: CategoryItem[] = [
-  { id: 'hiphop', name: '힙합', sub: 'HIP-HOP', icon: '🎤', accentColor: '#C4FF00' },
-  { id: 'rock', name: '락', sub: 'ROCK', icon: '🎸', accentColor: '#FF4B4B' },
-  { id: 'kpop', name: '케이팝', sub: 'K-POP', icon: '✨', accentColor: '#3B82F6' },
-  { id: 'band', name: '밴드', sub: 'BAND', icon: '🥁', accentColor: '#A855F7' },
+  { id: 'hiphop', name: { ko: '힙합', en: 'HIP-HOP' }, sub: 'HIP-HOP', icon: '🎤', accentColor: '#C4FF00' },
+  { id: 'rock', name: { ko: '락', en: 'ROCK' }, sub: 'ROCK', icon: '🎸', accentColor: '#FF4B4B' },
+  { id: 'kpop', name: { ko: '케이팝', en: 'K-POP' }, sub: 'K-POP', icon: '✨', accentColor: '#3B82F6' },
+  { id: 'band', name: { ko: '밴드', en: 'BAND' }, sub: 'BAND', icon: '🥁', accentColor: '#A855F7' },
 ];
 
 export const CategoryScreen: React.FC<CategoryScreenProps> = ({
@@ -42,6 +44,8 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   isDark,
   onToggleTheme,
   showToast,
+  lang = 'ko',
+  onToggleLang,
 }) => {
   const [shakingId, setShakingId] = useState<GenreTag | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -50,35 +54,36 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   const handleCardClick = (catId: GenreTag) => {
     const isSelected = selectedCategories.includes(catId);
     if (!isSelected && selectedCategories.length >= 3) {
-      showToast('최대 3개까지 선택할 수 있어요', 'warning');
+      showToast(
+        lang === 'ko' ? '최대 3개까지 선택할 수 있어요' : 'You can select up to 3 genres',
+        'warning'
+      );
       playDialTick(220);
       setShakingId(catId);
       setTimeout(() => setShakingId(null), 450);
       return;
     }
 
-    // Play bubble pop sound (true = chirps up on select, false = chirps down on deselect)
+    // Play bubble pop sound
     playPopSound(!isSelected);
     onToggleCategory(catId);
   };
 
   const count = selectedCategories.length;
-
-  // Calculate tracks per genre: 30 / count
   const songsPerGenre = count > 0 ? Math.floor(30 / count) : 0;
 
   const handleCreatePlaylist = () => {
     if (count === 0) {
-      showToast('장르를 1개 이상 선택해 주세요', 'warning');
+      showToast(
+        lang === 'ko' ? '장르를 1개 이상 선택해 주세요' : 'Please select at least 1 genre',
+        'warning'
+      );
       return;
     }
 
     setIsGenerating(true);
-
-    // 1. Play Bright Success Fanfare Chord Chime
     playSuccessFanfare();
 
-    // 2. Fire Canvas Confetti Celebration Explosion
     try {
       confetti({
         particleCount: 75,
@@ -90,10 +95,9 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
         scalar: 1.05,
       });
     } catch {
-      // Fallback gracefully if canvas context is restricted
+      // ignore
     }
 
-    // 3. Smooth transition to playlist screen
     setTimeout(() => {
       onNext();
       setIsGenerating(false);
@@ -107,8 +111,8 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
         <button
           type="button"
           onClick={onBack}
-          aria-label="이전"
-          className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors"
+          aria-label={lang === 'ko' ? '이전' : 'Back'}
+          className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -117,164 +121,183 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
           <Image src={brandLogo} alt="PULSE" fill className="object-cover" />
         </div>
 
-        <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
+        <div className="flex items-center gap-2">
+          {onToggleLang && (
+            <motion.button
+              whileTap={{ scale: 0.94 }}
+              type="button"
+              onClick={() => {
+                playPopSound();
+                onToggleLang();
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black border transition-colors bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 cursor-pointer shadow-sm"
+              aria-label="언어 전환"
+            >
+              <span
+                className={
+                  lang === 'ko'
+                    ? 'text-black dark:text-[#C4FF00] font-black'
+                    : 'text-zinc-400 font-semibold'
+                }
+              >
+                한
+              </span>
+              <span className="text-zinc-400 text-[10px]">/</span>
+              <span
+                className={
+                  lang === 'en'
+                    ? 'text-black dark:text-[#C4FF00] font-black'
+                    : 'text-zinc-400 font-semibold'
+                }
+              >
+                EN
+              </span>
+            </motion.button>
+          )}
+
+          <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
+        </div>
       </header>
 
       {/* Main Body */}
       <main className="flex-1 flex flex-col justify-center py-4 z-10">
         <div className="text-center mb-6">
           <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-            STEP 2 · GENRE SELECT
+            {lang === 'ko' ? 'STEP 2 · 장르 선택' : 'STEP 2 · GENRE SELECT'}
           </span>
           <h2 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white mt-1">
-            원하는 장르를 선택하세요
+            {lang === 'ko' ? '좋아하는 러닝 음악 장르' : 'Select Running Genres'}
           </h2>
           <div className="flex items-center justify-center gap-1.5 mt-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400">
-            <span>최대 3개 선택 가능</span>
+            <span>{lang === 'ko' ? '최대 3개 선택 가능' : 'Select up to 3'}</span>
             <span className="text-zinc-300 dark:text-zinc-700">·</span>
             <span
               className={`font-black ${
-                count > 0 ? 'text-[#C4FF00]' : 'text-zinc-400'
+                count > 0 ? 'text-[#00A344] dark:text-[#C4FF00]' : 'text-zinc-400'
               }`}
             >
-              {count} / 3 선택됨
+              {lang === 'ko' ? `${count} / 3 선택됨` : `${count} / 3 selected`}
             </span>
           </div>
         </div>
 
-        {/* Animated Equal-Ratio 30-Track Distribution Bar */}
-        <div className="mb-6 p-4 rounded-2xl bg-zinc-100/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800">
-          <div className="flex items-center justify-between text-[11px] font-extrabold mb-2.5">
-            <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
-              <Layers className="w-3.5 h-3.5 text-[#C4FF00]" />
-              <span>30곡 균등 비율 배분</span>
-            </div>
-            <span className="text-zinc-400 dark:text-zinc-500">
-              {count === 0 ? '선택 대기 중' : `${count}개 장르 균등 수록`}
-            </span>
-          </div>
-
-          {/* Equal split progress bar */}
-          <div className="h-3.5 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden flex p-0.5 gap-1">
-            <AnimatePresence>
-              {count === 0 ? (
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="text-[9px] font-bold text-zinc-400">장르 카드를 선택해 주세요</span>
-                </div>
-              ) : (
-                selectedCategories.map((catId) => {
-                  const cat = CATEGORIES.find((c) => c.id === catId);
-                  if (!cat) return null;
-                  return (
-                    <motion.div
-                      key={catId}
-                      layout
-                      initial={{ width: 0, opacity: 0 }}
-                      animate={{ width: `${100 / count}%`, opacity: 1 }}
-                      exit={{ width: 0, opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-                      className="h-full rounded-full flex items-center justify-center text-[9px] font-black text-black shadow-sm overflow-hidden whitespace-nowrap"
-                      style={{ backgroundColor: '#C4FF00' }}
-                    >
-                      <span>{cat.name} {songsPerGenre}곡</span>
-                    </motion.div>
-                  );
-                })
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-
-        {/* Tactile Spring Category Cards */}
-        <div className="grid grid-cols-2 gap-3.5">
+        {/* 2x2 Grid with Spring Physics */}
+        <div className="grid grid-cols-2 gap-3.5 mb-6">
           {CATEGORIES.map((cat) => {
             const isSelected = selectedCategories.includes(cat.id);
             const isShaking = shakingId === cat.id;
 
             return (
-              <motion.button
+              <motion.div
                 key={cat.id}
-                type="button"
-                layout
-                whileHover={{ y: -3, scale: 1.01 }}
-                whileTap={{ scale: 0.93 }}
                 animate={
                   isShaking
-                    ? { x: [-7, 7, -6, 6, -3, 3, 0], borderColor: '#FF4B4B' }
-                    : {}
+                    ? { x: [-8, 8, -6, 6, -3, 3, 0] }
+                    : { scale: isSelected ? 1.02 : 1 }
                 }
-                transition={{ duration: 0.3 }}
+                transition={{ type: 'spring', stiffness: 450, damping: 25 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.94 }}
                 onClick={() => handleCardClick(cat.id)}
-                className={`relative p-5 rounded-3xl text-left border-2 transition-colors duration-150 flex flex-col justify-between h-34 cursor-pointer select-none ${
+                className={`relative p-5 rounded-3xl border-2 flex flex-col justify-between h-36 cursor-pointer select-none transition-all duration-200 overflow-hidden ${
                   isSelected
-                    ? 'border-[#C4FF00] bg-[#C4FF00] text-black shadow-lg shadow-[#C4FF00]/25'
-                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white hover:border-zinc-300 dark:hover:border-zinc-700'
+                    ? 'bg-zinc-100 dark:bg-zinc-900 border-[#C4FF00] shadow-lg shadow-[#C4FF00]/15 ring-2 ring-[#C4FF00]/30'
+                    : 'bg-zinc-100/70 dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
                 }`}
               >
-                {/* Header with Subtitle and Checkbox */}
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-base">{cat.icon}</span>
-                    <span
-                      className={`text-[11px] font-extrabold tracking-wider ${
-                        isSelected ? 'text-black/75' : 'text-zinc-400 dark:text-zinc-500'
-                      }`}
-                    >
-                      {cat.sub}
-                    </span>
-                  </div>
+                {/* Background Accent Glow when Selected */}
+                {isSelected && (
+                  <div
+                    className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full blur-2xl opacity-20 pointer-events-none"
+                    style={{ backgroundColor: cat.accentColor }}
+                  />
+                )}
 
-                  <motion.div
-                    animate={{
-                      scale: isSelected ? [1, 1.2, 1] : 1,
-                    }}
-                    transition={{ duration: 0.2 }}
-                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
+                <div className="flex items-center justify-between">
+                  <span className="text-3xl">{cat.icon}</span>
+                  <div
+                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-200 ${
                       isSelected
-                        ? 'bg-black text-[#C4FF00]'
-                        : 'border border-zinc-300 dark:border-zinc-700 text-transparent'
+                        ? 'bg-[#C4FF00] text-black shadow-sm'
+                        : 'border-2 border-zinc-300 dark:border-zinc-700 bg-transparent'
                     }`}
                   >
-                    <Check className="w-3.5 h-3.5 stroke-[3]" />
-                  </motion.div>
+                    {isSelected && <Check className="w-4 h-4 stroke-[3]" />}
+                  </div>
                 </div>
 
-                {/* Genre Name & Allocated Songs Badge */}
-                <div className="mt-2 flex items-baseline justify-between">
-                  <div className="text-xl font-black tracking-tight">{cat.name}</div>
-                  {isSelected && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="text-[11px] font-black px-2 py-0.5 rounded-full bg-black/15 text-black"
-                    >
-                      {songsPerGenre}곡
-                    </motion.span>
-                  )}
+                <div>
+                  <h3 className="text-lg font-black text-zinc-900 dark:text-white">
+                    {cat.name[lang]}
+                  </h3>
+                  <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    {cat.sub}
+                  </span>
                 </div>
-              </motion.button>
+              </motion.div>
             );
           })}
         </div>
+
+        {/* Dynamic Track Distribution Badge */}
+        <AnimatePresence>
+          {count > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.96 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              className="p-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between shadow-sm"
+            >
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#00A344] dark:text-[#C4FF00]" />
+                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                  {lang === 'ko' ? '장르별 수록 비율' : 'Tracks per Genre'}
+                </span>
+              </div>
+              <span className="text-xs font-black text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                {lang === 'ko'
+                  ? `장르당 약 ${songsPerGenre}곡씩 총 30곡`
+                  : `~${songsPerGenre} tracks each (30 total)`}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
-      {/* Bottom CTA with Spring Physics and Confetti */}
+      {/* Bottom CTA */}
       <footer className="pb-4 pt-2 z-10">
         <motion.button
           type="button"
           disabled={count === 0 || isGenerating}
           onClick={handleCreatePlaylist}
           whileHover={count > 0 ? { scale: 1.02 } : {}}
-          whileTap={count > 0 ? { scale: 0.95 } : {}}
-          className={`w-full py-4 px-6 rounded-2xl font-black text-base transition-all flex items-center justify-center gap-2 select-none ${
+          whileTap={count > 0 ? { scale: 0.96 } : {}}
+          className={`w-full py-4 px-6 rounded-2xl font-black text-base transition-all flex items-center justify-center gap-2 ${
             count > 0
               ? 'bg-[#C4FF00] hover:bg-[#B8F500] text-black shadow-lg shadow-[#C4FF00]/25 cursor-pointer'
-              : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-400 cursor-not-allowed'
+              : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'
           }`}
         >
-          <Sparkles className="w-5 h-5 text-black" />
-          <span>30곡 플레이리스트 만들기</span>
-          <ArrowRight className="w-5 h-5" />
+          {isGenerating ? (
+            <div className="flex items-center gap-2">
+              <span className="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin" />
+              <span>{lang === 'ko' ? '30곡 맞춤 믹스 생성 중...' : 'Generating 30 Tracks...'}</span>
+            </div>
+          ) : (
+            <>
+              <span>
+                {count > 0
+                  ? lang === 'ko'
+                    ? '30곡 플레이리스트 만들기'
+                    : 'Create 30-Track Playlist'
+                  : lang === 'ko'
+                  ? '장르를 1개 이상 선택해 주세요'
+                  : 'Select at least 1 genre'}
+              </span>
+              <ArrowRight className="w-5 h-5" />
+            </>
+          )}
         </motion.button>
       </footer>
     </div>

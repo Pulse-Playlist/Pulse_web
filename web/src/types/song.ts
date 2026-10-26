@@ -1,8 +1,14 @@
 export type GenreTag = 'band' | 'kpop' | 'rock' | 'hiphop';
 
+export type AppLanguage = 'ko' | 'en';
+
 export interface Song {
   title: string;
   artist: string;
+  title_ko?: string;
+  title_en?: string;
+  artist_ko?: string;
+  artist_en?: string;
   normalized_key: string;
   album: string | null;
   cover_url: string | null;
@@ -23,6 +29,31 @@ export interface Song {
   melon_song_id?: number | null;
   bugs_track_id?: number | null;
   source?: string;
+}
+
+export function getSongTitle(song: Song, lang: AppLanguage = 'ko'): string {
+  if (lang === 'en') {
+    return song.title_en || song.title || '';
+  }
+  return song.title_ko || song.title || '';
+}
+
+export function getSongArtist(song: Song, lang: AppLanguage = 'ko'): string {
+  if (lang === 'en') {
+    return song.artist_en || song.artist || '';
+  }
+  return song.artist_ko || song.artist || '';
+}
+
+export interface SavedPlaylist {
+  id: string;
+  name: string;
+  author: string;
+  bpm: number;
+  categories: GenreTag[];
+  songs: Song[];
+  likes: number;
+  createdAt: string;
 }
 
 export interface SongsResponse {

@@ -10,7 +10,9 @@ import {
   startBpmMetronome,
   updateBpmMetronome,
   stopBpmMetronome,
+  playPopSound,
 } from '@/lib/soundEffects';
+import { AppLanguage } from '@/types/song';
 
 interface BpmScreenProps {
   bpm: number;
@@ -20,6 +22,8 @@ interface BpmScreenProps {
   onBack: () => void;
   isDark: boolean;
   onToggleTheme: () => void;
+  lang?: AppLanguage;
+  onToggleLang?: () => void;
 }
 
 export const BpmScreen: React.FC<BpmScreenProps> = ({
@@ -30,6 +34,8 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
   onBack,
   isDark,
   onToggleTheme,
+  lang = 'ko',
+  onToggleLang,
 }) => {
   const [inputText, setInputText] = useState(String(bpm));
   const [isPlayingBeat, setIsPlayingBeat] = useState(false);
@@ -53,7 +59,7 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
   const getBpmZone = (val: number) => {
     if (val <= 130) {
       return {
-        label: '조깅 · 웜업 페이스',
+        label: lang === 'ko' ? '조깅 · 웜업 페이스' : 'Jogging · Warmup Pace',
         color: '#C4FF00',
         textColor: 'text-[#C4FF00]',
         bgGlow: 'rgba(196, 255, 0, 0.22)',
@@ -64,7 +70,7 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
     }
     if (val <= 160) {
       return {
-        label: '지속주 · 에어로빅 페이스',
+        label: lang === 'ko' ? '지속주 · 에어로빅 페이스' : 'Aerobic Steady Pace',
         color: '#3B82F6',
         textColor: 'text-[#3B82F6]',
         bgGlow: 'rgba(59, 130, 246, 0.22)',
@@ -74,7 +80,7 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
       };
     }
     return {
-      label: '템포런 · 인터벌 스프린트',
+      label: lang === 'ko' ? '템포런 · 인터벌 스프린트' : 'Tempo · Interval Sprint',
       color: '#FF4B4B',
       textColor: 'text-[#FF4B4B]',
       bgGlow: 'rgba(255, 75, 75, 0.22)',
@@ -169,8 +175,8 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
         <button
           type="button"
           onClick={handleNavigateBack}
-          aria-label="이전"
-          className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors"
+          aria-label={lang === 'ko' ? '이전' : 'Back'}
+          className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -179,17 +185,52 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
           <Image src={brandLogo} alt="PULSE" fill className="object-cover" />
         </div>
 
-        <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
+        <div className="flex items-center gap-2">
+          {onToggleLang && (
+            <motion.button
+              whileTap={{ scale: 0.94 }}
+              type="button"
+              onClick={() => {
+                playPopSound();
+                onToggleLang();
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black border transition-colors bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 cursor-pointer shadow-sm"
+              aria-label="언어 전환"
+            >
+              <span
+                className={
+                  lang === 'ko'
+                    ? 'text-black dark:text-[#C4FF00] font-black'
+                    : 'text-zinc-400 font-semibold'
+                }
+              >
+                한
+              </span>
+              <span className="text-zinc-400 text-[10px]">/</span>
+              <span
+                className={
+                  lang === 'en'
+                    ? 'text-black dark:text-[#C4FF00] font-black'
+                    : 'text-zinc-400 font-semibold'
+                }
+              >
+                EN
+              </span>
+            </motion.button>
+          )}
+
+          <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
+        </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col justify-center py-4 text-center z-10">
         <div className="mb-6">
           <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-            STEP 1 · TEMPO SELECT
+            {lang === 'ko' ? 'STEP 1 · 템포 설정' : 'STEP 1 · TEMPO SELECT'}
           </span>
           <h2 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white mt-1">
-            원하는 BPM을 입력하세요
+            {lang === 'ko' ? '원하는 BPM을 입력하세요' : 'Set Your Cadence BPM'}
           </h2>
         </div>
 
@@ -255,7 +296,7 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
               onClick={() => handleNudge(-1)}
-              aria-label="1 감소"
+              aria-label={lang === 'ko' ? '1 감소' : '-1 BPM'}
               className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white flex items-center justify-center shadow-sm cursor-pointer"
             >
               <Minus className="w-5 h-5" />
@@ -285,7 +326,7 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
               onClick={() => handleNudge(1)}
-              aria-label="1 증가"
+              aria-label={lang === 'ko' ? '1 증가' : '+1 BPM'}
               className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white flex items-center justify-center shadow-sm cursor-pointer"
             >
               <Plus className="w-5 h-5" />
@@ -306,17 +347,17 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
             />
             <div className="flex justify-between text-[11px] font-bold text-zinc-400 mt-2">
               <span className={bpm <= 130 ? 'text-zinc-900 dark:text-white font-extrabold' : ''}>
-                80 (Warmup)
+                80 ({lang === 'ko' ? '웜업' : 'Warmup'})
               </span>
               <span
                 className={
                   bpm > 130 && bpm <= 160 ? 'text-zinc-900 dark:text-white font-extrabold' : ''
                 }
               >
-                140 (Jogging)
+                140 ({lang === 'ko' ? '조깅' : 'Jogging'})
               </span>
               <span className={bpm > 160 ? 'text-zinc-900 dark:text-white font-extrabold' : ''}>
-                200 (Sprint)
+                200 ({lang === 'ko' ? '스프린트' : 'Sprint'})
               </span>
             </div>
           </div>
@@ -338,7 +379,11 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
               {isPlayingBeat ? (
                 <>
                   <Volume2 className="w-4 h-4 animate-bounce" style={{ color: zone.color }} />
-                  <span>⏹️ {bpm} BPM 실시간 비트 재생 중 (탭하여 정지)</span>
+                  <span>
+                    {lang === 'ko'
+                      ? `⏹️ ${bpm} BPM 실시간 비트 재생 중 (정지)`
+                      : `⏹️ Playing ${bpm} BPM metronome (tap to stop)`}
+                  </span>
                   {/* Visual 4-beat dot indicator */}
                   <div className="flex items-center gap-1 ml-1.5">
                     {[0, 1, 2, 3].map((idx) => (
@@ -354,7 +399,9 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
               ) : (
                 <>
                   <VolumeX className="w-4 h-4 text-zinc-400" />
-                  <span>🥁 이 템포 비트 들어보기</span>
+                  <span>
+                    {lang === 'ko' ? '🥁 이 템포 비트 들어보기' : '🥁 Preview this beat'}
+                  </span>
                 </>
               )}
             </motion.button>
@@ -370,7 +417,11 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
           className="w-full py-4 px-5 rounded-2xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200/80 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white font-bold text-sm flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-sm"
         >
           <Hand className="w-4 h-4 text-[#C4FF00]" />
-          <span>내 발걸음에 맞추기? 화면 탭해서 템포 찾기</span>
+          <span>
+            {lang === 'ko'
+              ? '내 발걸음에 맞추기? 화면 탭해서 템포 찾기'
+              : 'Match your stride? Tap tempo to find BPM'}
+          </span>
         </motion.button>
       </main>
 
@@ -383,7 +434,7 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
           whileTap={{ scale: 0.96 }}
           className="w-full py-4 px-6 rounded-2xl bg-[#C4FF00] hover:bg-[#B8F500] text-black font-black text-base shadow-lg shadow-[#C4FF00]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
-          <span>다음 단계 (장르 선택)</span>
+          <span>{lang === 'ko' ? '다음 단계 (장르 선택)' : 'Next (Select Genres)'}</span>
           <ArrowRight className="w-5 h-5" />
         </motion.button>
       </footer>

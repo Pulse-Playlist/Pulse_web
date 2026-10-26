@@ -12,7 +12,7 @@ import {
   SkipBack,
   ExternalLink,
 } from 'lucide-react';
-import { Song } from '@/types/song';
+import { Song, AppLanguage, getSongTitle, getSongArtist } from '@/types/song';
 import { getSongBpm } from '@/lib/playlistGenerator';
 import { getYouTubeMusicUrl } from '@/lib/platformExport';
 
@@ -25,6 +25,7 @@ interface MiniPlayerDockProps {
   onClose: () => void;
   onNext?: () => void;
   onPrev?: () => void;
+  lang?: AppLanguage;
 }
 
 export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
@@ -36,11 +37,14 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
   onClose,
   onNext,
   onPrev,
+  lang = 'ko',
 }) => {
   if (!currentSong) return null;
 
   const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
   const songBpm = getSongBpm(currentSong);
+  const title = getSongTitle(currentSong, lang);
+  const artist = getSongArtist(currentSong, lang);
 
   const formatSec = (sec: number) => {
     const s = Math.floor(sec || 0);
@@ -73,7 +77,7 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
               {currentSong.cover_url ? (
                 <Image
                   src={currentSong.cover_url}
-                  alt={currentSong.title}
+                  alt={title}
                   fill
                   className="object-cover"
                   unoptimized
@@ -100,14 +104,14 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
             <div className="flex-1 min-w-0 pr-1">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black text-white truncate">
-                  {currentSong.title}
+                  {title}
                 </span>
                 <span className="text-[10px] font-black text-black bg-[#C4FF00] px-1.5 py-0.2 rounded-full shrink-0">
                   {songBpm} BPM
                 </span>
               </div>
               <div className="text-[11px] text-zinc-400 truncate mt-0.5 flex items-center gap-1">
-                <span className="truncate">{currentSong.artist}</span>
+                <span className="truncate">{artist}</span>
                 <span>·</span>
                 <span className="shrink-0 text-zinc-500 font-mono text-[10px]">
                   {formatSec(currentTime)}/{formatSec(duration)}
@@ -122,8 +126,8 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
                 <button
                   type="button"
                   onClick={onPrev}
-                  aria-label="이전 곡"
-                  className="p-1.5 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                  aria-label={lang === 'ko' ? '이전 곡' : 'Previous track'}
+                  className="p-1.5 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
                 >
                   <SkipBack className="w-4 h-4 fill-current" />
                 </button>
@@ -134,8 +138,8 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
                 whileTap={{ scale: 0.9 }}
                 type="button"
                 onClick={onTogglePlay}
-                aria-label={isPlaying ? '일시 정지' : '재생'}
-                className="w-9 h-9 rounded-full bg-[#C4FF00] text-black flex items-center justify-center shrink-0 hover:bg-[#B4F000] transition-colors shadow-lg shadow-[#C4FF00]/20"
+                aria-label={isPlaying ? (lang === 'ko' ? '일시 정지' : 'Pause') : (lang === 'ko' ? '재생' : 'Play')}
+                className="w-9 h-9 rounded-full bg-[#C4FF00] text-black flex items-center justify-center shrink-0 hover:bg-[#B4F000] transition-colors shadow-lg shadow-[#C4FF00]/20 cursor-pointer"
               >
                 {isPlaying ? (
                   <Pause className="w-4 h-4 fill-black" />
@@ -149,8 +153,8 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
                 <button
                   type="button"
                   onClick={onNext}
-                  aria-label="다음 곡"
-                  className="p-1.5 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                  aria-label={lang === 'ko' ? '다음 곡' : 'Next track'}
+                  className="p-1.5 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
                 >
                   <SkipForward className="w-4 h-4 fill-current" />
                 </button>
@@ -161,9 +165,9 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
                 href={getYouTubeMusicUrl(currentSong)}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="유튜브 뮤직에서 듣기"
+                aria-label={lang === 'ko' ? '유튜브 뮤직에서 듣기' : 'Listen on YouTube Music'}
                 className="p-1.5 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-red-400 transition-colors ml-0.5"
-                title="유튜브 뮤직에서 열기"
+                title="YouTube Music"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
@@ -172,8 +176,8 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                aria-label="플레이어 닫기"
-                className="p-1.5 rounded-full text-zinc-500 hover:text-white transition-colors"
+                aria-label={lang === 'ko' ? '플레이어 닫기' : 'Close player'}
+                className="p-1.5 rounded-full text-zinc-500 hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
