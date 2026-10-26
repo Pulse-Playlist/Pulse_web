@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { Song, SongsResponse } from '@/types/song';
 
-function loadSongs(): Song[] {
+function loadLocalSongs(): Song[] {
   const candidatePaths = [
     path.resolve(process.cwd(), '../crawler/data/songs.json'),
     path.resolve(process.cwd(), 'public/data/songs.json'),
@@ -28,6 +28,47 @@ function loadSongs(): Song[] {
   return [];
 }
 
+async function loadSongs(): Promise<Song[]> {
+  const supabaseUrl = (
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    ''
+  ).replace(/\/$/, '');
+  const supabaseKey =
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    '';
+
+  if (supabaseUrl && supabaseKey) {
+    try {
+      const headers: Record<string, string> = {
+        apikey: supabaseKey,
+        Accept: 'application/json',
+      };
+      if (!supabaseKey.startsWith('sb_')) {
+        headers.Authorization = `Bearer ${supabaseKey}`;
+      }
+
+      const res = await fetch(`${supabaseUrl}/rest/v1/songs?select=*&limit=2000`, {
+        headers,
+        next: { revalidate: 300 },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length >= 100) {
+          return data as Song[];
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase fetch fallback to local songs.json:', err);
+    }
+  }
+
+  return loadLocalSongs();
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -37,7 +78,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')?.toLowerCase().trim() || '';
     const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : null;
 
-    const allSongs = loadSongs();
+    const allSongs = await loadSongs();
 
     // Compute global category counts
     const category_counts: Record<string, number> = {
