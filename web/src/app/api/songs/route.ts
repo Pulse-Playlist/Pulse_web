@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { Song, SongsResponse } from '@/types/song';
 
+export const dynamic = 'force-dynamic';
+
 function loadLocalSongs(): Song[] {
   const candidatePaths = [
     path.resolve(process.cwd(), '../crawler/data/songs.json'),
@@ -58,14 +60,22 @@ async function loadSongs(): Promise<Song[]> {
         headers.Authorization = `Bearer ${supabaseKey}`;
       }
 
-      const res = await fetch(`${supabaseUrl}/rest/v1/songs?select=*&limit=2000`, {
-        headers,
-        next: { revalidate: 60 },
-      });
+      const [resPage1, resPage2] = await Promise.all([
+        fetch(`${supabaseUrl}/rest/v1/songs?select=*&order=id.asc&offset=0&limit=1000`, {
+          headers,
+          cache: 'no-store',
+        }),
+        fetch(`${supabaseUrl}/rest/v1/songs?select=*&order=id.asc&offset=1000&limit=1000`, {
+          headers,
+          cache: 'no-store',
+        }),
+      ]);
 
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length >= 100) {
+      if (resPage1.ok) {
+        const page1 = await resPage1.json();
+        const page2 = resPage2.ok ? await resPage2.json() : [];
+        const data = [...(Array.isArray(page1) ? page1 : []), ...(Array.isArray(page2) ? page2 : [])];
+        if (data.length >= 100) {
           return (data as Song[]).map((row) => {
             const local = row.normalized_key ? localByKey.get(row.normalized_key) : undefined;
             if (!local) return row;
