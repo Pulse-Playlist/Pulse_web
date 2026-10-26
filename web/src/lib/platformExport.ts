@@ -1,4 +1,4 @@
-import { Song, GenreTag } from '@/types/song';
+import { Song, GenreTag, AppLanguage, getSongTitle, getSongArtist } from '@/types/song';
 import { getSongBpm } from './playlistGenerator';
 
 export type PlatformKey = 'youtube_music' | 'spotify' | 'apple_music' | 'melon' | 'bugs';
@@ -148,19 +148,27 @@ export const CONVERTER_SERVICES = [
 /**
  * Clean `Artist - Title` lines (standard format accepted by TuneMyMusic, Soundiiz, Spotlistr, and Melon/Spotify text importers).
  */
-export function formatTracklistForImport(playlist: Song[]): string {
-  return playlist.map((song) => `${song.artist} - ${song.title}`).join('\n');
+export function formatTracklistForImport(playlist: Song[], lang: AppLanguage = 'ko'): string {
+  return playlist.map((song) => `${getSongArtist(song, lang)} - ${getSongTitle(song, lang)}`).join('\n');
 }
 
 /**
  * Detailed tracklist formatted with index, BPM, and genre.
  */
-export function formatTracklistDetailed(playlist: Song[], targetBpm: number): string {
+export function formatTracklistDetailed(
+  playlist: Song[],
+  targetBpm: number,
+  lang: AppLanguage = 'ko',
+  customPlaylistName?: string
+): string {
   const lines = playlist.map((song, idx) => {
     const bpm = getSongBpm(song);
-    return `${idx + 1}. ${song.artist} - ${song.title} (${bpm} BPM)`;
+    return `${idx + 1}. ${getSongArtist(song, lang)} - ${getSongTitle(song, lang)} (${bpm} BPM)`;
   });
-  return `🏃 PULSE RUN ${targetBpm} BPM 러닝 믹스 (${playlist.length}곡)\n\n${lines.join('\n')}\n\nhttps://pulserun.app`;
+  const name =
+    customPlaylistName ||
+    (lang === 'en' ? `PULSE RUN ${targetBpm} BPM Running Mix` : `PULSE RUN ${targetBpm} BPM 러닝 믹스`);
+  return `🏃 ${name} (${playlist.length}${lang === 'en' ? ' tracks' : '곡'})\n\n${lines.join('\n')}\n\nhttps://pulserun.app`;
 }
 
 /**
@@ -179,11 +187,16 @@ function escapeCsv(val: string | number | null | undefined): string {
  * Title,Artist,Album,BPM,Genre,AppleMusicURL,YouTubeMusicURL
  * Includes UTF-8 BOM so Excel opens it with perfect Korean encoding.
  */
-export function downloadPlaylistCsv(playlist: Song[], targetBpm: number): void {
+export function downloadPlaylistCsv(
+  playlist: Song[],
+  targetBpm: number,
+  customPlaylistName?: string,
+  lang: AppLanguage = 'ko'
+): void {
   const headers = ['Title', 'Artist', 'Album', 'BPM', 'Genre', 'AppleMusicURL', 'YouTubeMusicURL'];
   const rows = playlist.map((song) => [
-    escapeCsv(song.title),
-    escapeCsv(song.artist),
+    escapeCsv(getSongTitle(song, lang)),
+    escapeCsv(getSongArtist(song, lang)),
     escapeCsv(song.album || ''),
     escapeCsv(getSongBpm(song)),
     escapeCsv(song.genre_tag),
@@ -193,18 +206,26 @@ export function downloadPlaylistCsv(playlist: Song[], targetBpm: number): void {
 
   const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  triggerBrowserDownload(blob, `PULSE_${targetBpm}BPM_Playlist.csv`);
+  const sanitized = customPlaylistName ? customPlaylistName.replace(/[^\w\s\uac00-\ud7a3-]/gi, '_').trim() : '';
+  const filename = sanitized ? `${sanitized}.csv` : `PULSE_${targetBpm}BPM_Playlist.csv`;
+  triggerBrowserDownload(blob, filename);
 }
 
 /**
  * Downloads `.m3u8` playlist file.
  */
-export function downloadPlaylistM3u(playlist: Song[], targetBpm: number): void {
-  const header = `#EXTM3U\n#PLAYLIST:PULSE ${targetBpm} BPM Running Playlist\n`;
+export function downloadPlaylistM3u(
+  playlist: Song[],
+  targetBpm: number,
+  customPlaylistName?: string,
+  lang: AppLanguage = 'ko'
+): void {
+  const plName = customPlaylistName || `PULSE ${targetBpm} BPM Running Playlist`;
+  const header = `#EXTM3U\n#PLAYLIST:${plName}\n`;
   const tracks = playlist
     .map((song) => {
       const dur = song.duration_sec || 210;
-      const title = `${song.artist} - ${song.title}`;
+      const title = `${getSongArtist(song, lang)} - ${getSongTitle(song, lang)}`;
       const url = song.preview_url || getYouTubeMusicUrl(song);
       return `#EXTINF:${dur},${title}\n${url}`;
     })
@@ -212,7 +233,9 @@ export function downloadPlaylistM3u(playlist: Song[], targetBpm: number): void {
 
   const content = header + tracks;
   const blob = new Blob([content], { type: 'audio/x-mpegurl;charset=utf-8;' });
-  triggerBrowserDownload(blob, `PULSE_${targetBpm}BPM_Playlist.m3u8`);
+  const sanitized = customPlaylistName ? customPlaylistName.replace(/[^\w\s\uac00-\ud7a3-]/gi, '_').trim() : '';
+  const filename = sanitized ? `${sanitized}.m3u8` : `PULSE_${targetBpm}BPM_Playlist.m3u8`;
+  triggerBrowserDownload(blob, filename);
 }
 
 /**

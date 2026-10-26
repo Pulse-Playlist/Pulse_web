@@ -151,7 +151,7 @@ class SoundEffectsEngine {
    * active: 520 -> 880Hz (chirp up)
    * inactive: 480 -> 300Hz (chirp down)
    */
-  public playPopSound(active: boolean): void {
+  public playPopSound(active: boolean = true): void {
     if (this.muted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -363,7 +363,7 @@ export const soundEngine = new SoundEffectsEngine();
 // Convenience exports for direct usage
 export const playDialTick = (bpm: number = 160) => soundEngine.playDialTick(bpm);
 export const playTapKick = (tapCount: number = 1) => soundEngine.playTapKick(tapCount);
-export const playPopSound = (active: boolean) => soundEngine.playPopSound(active);
+export const playPopSound = (active: boolean = true) => soundEngine.playPopSound(active);
 export const playShuffleSweep = () => soundEngine.playShuffleSweep();
 export const playSuccessFanfare = () => soundEngine.playSuccessFanfare();
 
