@@ -2,6 +2,7 @@
 Audio Preview Matcher & Librosa DSP Rhythm Analyzer for PULSE.
 Implements the verifier-audited DSP equations:
 - Librosa built-in symmetric log2-Gaussian prior centered at start_bpm=128.0 (zero Jacobian mode shift!)
+- Continuous, 0.1-BPM precision tempo via fine-hop autocorrelation and parabolic peak interpolation
 - Deezer BPM cross-validation when available
 - Running cadence normalization into [140, 195] SPM (native, double_time, half_time)
 - Frame-quantization-compensated inter-beat stability (subtracts 9.48ms quantization floor in quadrature)
@@ -78,7 +79,11 @@ def match_itunes_track(title: str, artist: str, sleep_sec: float = 0.8) -> Optio
     return None
 
 
-def fetch_deezer_reference(title: str, artist: str) -> Tuple[Optional[float], Optional[int]]:
+def fetch_deezer_reference(
+    title: str,
+    artist: str,
+    timeout: float = 3.0,
+) -> Tuple[Optional[float], Optional[int]]:
     """
     Queries Deezer API as a secondary BPM reference (`deezer_bpm`, `deezer_track_id`).
     Returns (None, track_id) if Deezer's BPM is 0 or unavailable.
@@ -89,7 +94,7 @@ def fetch_deezer_reference(title: str, artist: str) -> Tuple[Optional[float], Op
         search_res = requests.get(
             "https://api.deezer.com/search",
             params={"q": f"{clean_a} {clean_t}", "limit": 3},
-            timeout=5,
+            timeout=timeout,
         )
         if search_res.status_code != 200:
             return None, None
@@ -101,7 +106,7 @@ def fetch_deezer_reference(title: str, artist: str) -> Tuple[Optional[float], Op
         if not track_id:
             return None, None
 
-        detail_res = requests.get(f"https://api.deezer.com/track/{track_id}", timeout=5)
+        detail_res = requests.get(f"https://api.deezer.com/track/{track_id}", timeout=timeout)
         if detail_res.status_code != 200:
             return None, int(track_id)
 
@@ -165,46 +170,65 @@ def analyze_preview_audio(
             return None
 
         hop_length = 512
+        hop_length_fine = 128
 
-        # 2. Compute spectral onset strength envelope
-        onset_env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length)
+        # 2. Compute spectral onset strength envelopes (standard and fine)
+        onset_env_512 = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length)
+        onset_env_128 = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_length_fine)
 
         # 3. Beat tracking with Librosa's built-in symmetric log2-Gaussian prior centered at 128.0 BPM
         # (Avoids the -ln(x) Jacobian mode shift of scipy.stats.lognorm!)
         tempo_arr, beat_frames = librosa.beat.beat_track(
-            onset_envelope=onset_env,
+            onset_envelope=onset_env_512,
             sr=sr,
             hop_length=hop_length,
             start_bpm=128.0,
             prior=None,
         )
-        librosa_bpm = float(np.atleast_1d(tempo_arr)[0])
+        coarse_bpm = float(np.atleast_1d(tempo_arr)[0])
+
+        # Autocorrelation refinement on fine onset envelope (hop_length_fine = 128)
+        max_size = int(sr / hop_length_fine * 4)
+        ac = librosa.autocorrelate(onset_env_128, max_size=max_size)
+
+        L_expected = (60.0 * sr) / (hop_length_fine * coarse_bpm)
+        lag_min = max(1, int(np.floor(L_expected * 0.92)))
+        lag_max = min(len(ac) - 2, int(np.ceil(L_expected * 1.08)))
+
+        if lag_min <= lag_max and lag_max < len(ac) - 1:
+            k = lag_min + int(np.argmax(ac[lag_min : lag_max + 1]))
+            denom = ac[k - 1] - 2.0 * ac[k] + ac[k + 1] + 1e-12
+            delta = float(np.clip(0.5 * (ac[k - 1] - ac[k + 1]) / denom, -0.5, 0.5))
+            exact_lag = k + delta
+            fine_bpm = (60.0 * sr) / (hop_length_fine * exact_lag)
+        else:
+            fine_bpm = coarse_bpm
 
         # Cross-check with Deezer BPM if available (resolve half/double octave ambiguity)
-        raw_bpm = librosa_bpm
+        raw_bpm = fine_bpm
         if deezer_bpm and deezer_bpm > 55.0:
-            if abs(librosa_bpm - deezer_bpm) <= 4.0:
-                raw_bpm = (librosa_bpm + deezer_bpm) / 2.0
-            elif abs(librosa_bpm * 2.0 - deezer_bpm) <= 6.0:
-                raw_bpm = deezer_bpm
-            elif abs(librosa_bpm - deezer_bpm * 2.0) <= 6.0:
-                raw_bpm = librosa_bpm
+            if abs(fine_bpm - deezer_bpm) <= 4.0:
+                raw_bpm = (fine_bpm + deezer_bpm) / 2.0
+            elif abs(fine_bpm * 2.0 - deezer_bpm) <= 6.0:
+                raw_bpm = (fine_bpm * 2.0 + deezer_bpm) / 2.0
+            elif abs(fine_bpm - deezer_bpm * 2.0) <= 6.0:
+                raw_bpm = (fine_bpm + deezer_bpm * 2.0) / 2.0
 
         # 4. Normalize into Running Cadence (SPM)
         running_bpm, cadence_mode = normalize_running_cadence(raw_bpm)
 
         # 5. Pulse Clarity via Autocorrelation Tempogram Prominence (quantization-immune)
         tempogram = librosa.feature.tempogram(
-            onset_envelope=onset_env, sr=sr, hop_length=hop_length
+            onset_envelope=onset_env_512, sr=sr, hop_length=hop_length
         )
         frame_peak_ratio = np.max(tempogram, axis=0) / (np.mean(tempogram, axis=0) + 1e-6)
         beat_clarity = float(np.clip((np.mean(frame_peak_ratio) - 1.5) / 4.5, 0.0, 1.0))
 
         # 6. Beat Salience (Onset peak strength at beat positions vs overall background)
         if len(beat_frames) > 0:
-            valid_beats = beat_frames[beat_frames < len(onset_env)]
+            valid_beats = beat_frames[beat_frames < len(onset_env_512)]
             beat_salience = float(
-                np.mean(onset_env[valid_beats]) / (np.mean(onset_env) + 1e-6)
+                np.mean(onset_env_512[valid_beats]) / (np.mean(onset_env_512) + 1e-6)
             )
         else:
             beat_salience = 1.0
