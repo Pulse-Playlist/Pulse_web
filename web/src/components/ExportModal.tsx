@@ -10,22 +10,33 @@ import {
   Download,
   ExternalLink,
   Sparkles,
-  Rocket,
-  ArrowRight,
   FileSpreadsheet,
   CheckCircle2,
   Layers,
+  Loader2,
+  AlertCircle,
+  RotateCw,
+  Music,
 } from 'lucide-react';
 import { Song, GenreTag } from '@/types/song';
 import {
   PLATFORMS,
   PlatformKey,
-  CONVERTER_SERVICES,
   formatTracklistForImport,
   downloadPlaylistCsv,
   downloadPlaylistM3u,
   getShareableUrl,
 } from '@/lib/platformExport';
+import {
+  createAppleMusicPlaylist,
+  AppleMusicPlaylistResult,
+} from '@/lib/appleMusic';
+
+const AppleIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 0.92-2.87-.9.04-2.02.6-2.66 1.34-.56.65-.99 1.7-0.85 2.73.99.08 1.98-.45 2.59-1.2z" />
+  </svg>
+);
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -37,21 +48,61 @@ interface ExportModalProps {
   showToast: (text: string, type?: 'info' | 'success' | 'warning') => void;
 }
 
+type AppleMusicStatus =
+  | 'idle'
+  | 'loading_sdk'
+  | 'authorizing'
+  | 'preparing_tracks'
+  | 'creating'
+  | 'done'
+  | 'error';
+
 export const ExportModal: React.FC<ExportModalProps> = ({
   isOpen,
   onClose,
   playlist,
   targetBpm,
   selectedCategories,
-  isDark,
   showToast,
 }) => {
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformKey>('youtube_music');
   const [copiedType, setCopiedType] = useState<'text' | 'link' | 'platform' | null>(null);
 
+  // Apple Music direct playlist states
+  const [amStatus, setAmStatus] = useState<AppleMusicStatus>('idle');
+  const [amProgressMessage, setAmProgressMessage] = useState<string>('');
+  const [amResult, setAmResult] = useState<AppleMusicPlaylistResult | null>(null);
+
   if (!isOpen) return null;
 
   const currentPlatformMeta = PLATFORMS[selectedPlatform];
+
+  // Create playlist directly in Apple Music library
+  const handleCreateAppleMusic = async () => {
+    if (!playlist.length) return;
+
+    setAmStatus('authorizing');
+    setAmProgressMessage('Apple ID 인증 중...');
+
+    const result = await createAppleMusicPlaylist(
+      playlist,
+      targetBpm,
+      selectedCategories,
+      (msg, step) => {
+        setAmProgressMessage(msg);
+        setAmStatus(step);
+      }
+    );
+
+    setAmResult(result);
+    if (result.success) {
+      setAmStatus('done');
+      showToast('애플뮤직 보관함에 플레이리스트가 생성되었어요!', 'success');
+    } else {
+      setAmStatus('error');
+      showToast(result.error || '플레이리스트 생성에 실패했습니다.', 'warning');
+    }
+  };
 
   // Copy tracklist in Artist - Title format
   const handleCopyTracklist = (context: 'text' | 'platform') => {
@@ -60,7 +111,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(() => {
         setCopiedType(context);
-        showToast('30곡 트랙 목록이 클립보드에 복사되었어요!', 'success');
+        showToast(`${playlist.length}곡 트랙 목록이 클립보드에 복사되었어요!`, 'success');
         setTimeout(() => setCopiedType(null), 2500);
       });
     } else {
@@ -102,6 +153,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     showToast(`PULSE_${targetBpm}BPM_Playlist.m3u8 다운로드 시작!`, 'success');
   };
 
+  const isAmLoading =
+    amStatus === 'loading_sdk' ||
+    amStatus === 'authorizing' ||
+    amStatus === 'preparing_tracks' ||
+    amStatus === 'creating';
+
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -121,7 +178,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-          className="relative w-full max-w-[430px] max-h-[90vh] flex flex-col bg-white dark:bg-[#121216] border-t sm:border border-zinc-200 dark:border-zinc-800 rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden z-10"
+          className="relative w-full max-w-[440px] max-h-[90vh] flex flex-col bg-white dark:bg-[#121216] border-t sm:border border-zinc-200 dark:border-zinc-800 rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden z-10"
         >
           {/* Top Grab Handle */}
           <div className="pt-3 pb-1 flex justify-center cursor-pointer" onClick={onClose}>
@@ -132,11 +189,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           <div className="px-6 py-3 border-b border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-2xl bg-black text-[#C4FF00] dark:bg-[#C4FF00] dark:text-black flex items-center justify-center shadow-sm">
-                <Rocket className="w-4 h-4" />
+                <Music className="w-4 h-4" />
               </div>
               <div>
                 <h2 className="text-base font-black text-zinc-900 dark:text-white flex items-center gap-1.5">
-                  음원사이트로 플리 내보내기
+                  플레이리스트 내보내기
                 </h2>
                 <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
                   {targetBpm} BPM 러닝 믹스 · 총 {playlist.length}곡
@@ -156,27 +213,136 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
           {/* Scrollable Body */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6 text-zinc-800 dark:text-zinc-200">
-            {/* Section 1: Platform Grid */}
-            <section>
-              <div className="flex items-center justify-between mb-2.5">
+            {/* ============================================================== */}
+            {/* FEATURED: Apple Music Direct Library Creation (Native MusicKit) */}
+            {/* ============================================================== */}
+            <section className="relative overflow-hidden rounded-2xl border border-rose-500/30 bg-gradient-to-br from-rose-500/10 via-pink-500/5 to-transparent p-4 shadow-sm dark:border-rose-500/20 dark:from-rose-950/40 dark:via-zinc-900/60 dark:to-zinc-900/40">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-[#C4FF00] shrink-0" />
-                  <h3 className="text-xs font-black uppercase tracking-wider text-zinc-900 dark:text-white">
-                    원클릭 음원사이트 플리 생성
-                  </h3>
+                  <AppleIcon className="w-4 h-4 text-[#FA243C]" />
+                  <span className="text-xs font-black uppercase tracking-wider text-zinc-900 dark:text-white">
+                    Apple Music 보관함 연동
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                  30곡 자동 복사 지원
+                <span className="text-[10px] font-black text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20 flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" /> 원클릭 자동 생성
                 </span>
               </div>
 
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-3 leading-relaxed">
-                플랫폼을 선택하면 <span className="font-bold text-zinc-800 dark:text-zinc-200">30곡 트랙리스트가 즉시 복사</span>되며, 변환기에서 붙여넣기로 10초 만에 플리가 생성됩니다.
+              <p className="text-[11px] text-zinc-600 dark:text-zinc-300 mb-3.5 leading-relaxed">
+                Apple ID 로그인 한 번으로 <span className="font-bold text-zinc-900 dark:text-white">{targetBpm} BPM 러닝 믹스({playlist.length}곡)</span>가 내 Apple Music 보관함에 즉시 플레이리스트로 생성됩니다.
               </p>
 
-              {/* 5 Platforms Row */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {(Object.keys(PLATFORMS) as PlatformKey[]).map((key) => {
+              {/* Status Views */}
+              {amStatus === 'idle' && (
+                <button
+                  type="button"
+                  onClick={handleCreateAppleMusic}
+                  className="w-full py-3 px-4 rounded-xl bg-[#FA243C] hover:bg-[#e01d34] text-white text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-rose-500/20 active:scale-[0.98] transition-all"
+                >
+                  <AppleIcon className="w-4 h-4 fill-current" />
+                  <span>🍎 Apple Music 내 보관함에 바로 생성</span>
+                </button>
+              )}
+
+              {isAmLoading && (
+                <div className="w-full py-3 px-4 rounded-xl bg-zinc-900/90 text-white dark:bg-zinc-800 text-xs font-black flex items-center justify-center gap-2.5 border border-zinc-700/50 shadow-inner">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#FA243C]" />
+                  <span>
+                    {amProgressMessage ||
+                      (amStatus === 'authorizing'
+                        ? 'Apple ID 인증 중...'
+                        : `애플뮤직 보관함에 ${playlist.length}곡 추가 중...`)}
+                  </span>
+                </div>
+              )}
+
+              {amStatus === 'done' && (
+                <div className="space-y-2.5">
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+                    <span>내 애플뮤직에 플레이리스트가 생성되었어요!</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <a
+                      href={amResult?.appUrl || 'music://'}
+                      className="py-2.5 px-3 rounded-xl bg-[#FA243C] hover:bg-[#e01d34] text-white text-xs font-black flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                    >
+                      <AppleIcon className="w-3.5 h-3.5 fill-current" />
+                      <span>애플뮤직 앱 열기</span>
+                    </a>
+
+                    <a
+                      href={amResult?.webUrl || 'https://music.apple.com/library/playlists'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-2.5 px-3 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-[11px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                    >
+                      <span>웹에서 보기</span>
+                      <ExternalLink className="w-3 h-3 text-zinc-400" />
+                    </a>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAmStatus('idle');
+                        setAmResult(null);
+                      }}
+                      className="text-[10px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center gap-1 transition-colors"
+                    >
+                      <RotateCw className="w-2.5 h-2.5" /> 다시 생성하기
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {amStatus === 'error' && (
+                <div className="space-y-2">
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 text-xs font-medium flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
+                    <span className="leading-snug">{amProgressMessage || '플레이리스트 생성에 실패했습니다.'}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleCreateAppleMusic}
+                    className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black text-xs font-black flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                    <span>다시 시도하기</span>
+                  </button>
+                </div>
+              )}
+            </section>
+
+            {/* ============================================================== */}
+            {/* Section 2: Other Streaming Platforms (Direct Link & Quick Copy) */}
+            {/* ============================================================== */}
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-zinc-400 shrink-0" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-zinc-900 dark:text-white">
+                    다른 플랫폼에서 듣기
+                  </h3>
+                </div>
+                {copiedType === 'platform' && (
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Check className="w-3 h-3" /> {playlist.length}곡 복사됨
+                  </span>
+                )}
+              </div>
+
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-3 leading-relaxed">
+                플랫폼을 누르면 <span className="font-bold text-zinc-800 dark:text-zinc-200">전체 트랙리스트가 자동 복사</span>되며 해당 플랫폼으로 바로 이동합니다.
+              </p>
+
+              {/* Platform Grid */}
+              <div className="grid grid-cols-2 gap-2">
+                {(['youtube_music', 'spotify', 'melon', 'bugs'] as PlatformKey[]).map((key) => {
                   const p = PLATFORMS[key];
                   const isSelected = selectedPlatform === key;
 
@@ -187,7 +353,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                       onClick={() => handleSelectPlatform(key)}
                       className={`relative flex flex-col p-3 rounded-2xl border text-left transition-all active:scale-95 ${
                         isSelected
-                          ? 'bg-[#C4FF00]/10 border-[#C4FF00] dark:bg-[#C4FF00]/15 shadow-sm ring-1 ring-[#C4FF00]'
+                          ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-900 dark:border-white shadow-sm'
                           : 'bg-zinc-50 dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
                       }`}
                     >
@@ -198,7 +364,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                           {p.badge}
                         </span>
                         {isSelected && (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#0A0A0A] dark:text-[#C4FF00]" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
                         )}
                       </div>
 
@@ -211,85 +377,37 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     </button>
                   );
                 })}
-
-                {/* Spotlistr Quick Box */}
-                <div className="flex flex-col justify-center p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-dashed border-zinc-300 dark:border-zinc-800 text-left">
-                  <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-400">
-                    전 플랫폼 지원
-                  </span>
-                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 mt-0.5">
-                    TuneMyMusic / Soundiiz
-                  </span>
-                </div>
               </div>
 
-              {/* Active Platform Action Launchers Box */}
-              <div className="mt-3 p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800 space-y-3">
-                <div className="flex items-center justify-between">
+              {/* Active Platform Direct Launcher */}
+              {selectedPlatform !== 'apple_music' && (
+                <div className="mt-2.5 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div
-                      className="w-2.5 h-2.5 rounded-full"
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: currentPlatformMeta.accentColor }}
                     />
                     <span className="text-xs font-black text-zinc-900 dark:text-white">
-                      {currentPlatformMeta.name} 플리 만들기
+                      {currentPlatformMeta.name} 바로가기
                     </span>
                   </div>
 
-                  {copiedType === 'platform' && (
-                    <span className="text-[10px] font-bold text-emerald-500 flex items-center gap-1">
-                      <Check className="w-3 h-3" /> 30곡 복사됨
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  {/* Primary: Open TuneMyMusic Transfer */}
                   <a
-                    href="https://www.tunemymusic.com/transfer"
+                    href={currentPlatformMeta.homeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-2.5 px-3.5 rounded-xl bg-black text-[#C4FF00] dark:bg-[#C4FF00] dark:text-black text-xs font-black flex items-center justify-between shadow-sm active:scale-95 transition-all"
+                    className="py-1.5 px-3 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black text-[11px] font-bold flex items-center gap-1 active:scale-95 transition-all"
                   >
-                    <span className="flex items-center gap-1.5">
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      TuneMyMusic 무료 변환기로 10초 생성
-                    </span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>앱/웹 열기</span>
+                    <ExternalLink className="w-3 h-3" />
                   </a>
-
-                  {/* Secondary: Open Platform Web directly */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <a
-                      href={currentPlatformMeta.homeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="py-2 px-3 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 text-zinc-800 dark:text-zinc-200 text-[11px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
-                    >
-                      <span>{currentPlatformMeta.koreanName} 앱/웹 열기</span>
-                      <ExternalLink className="w-3 h-3 text-zinc-400" />
-                    </a>
-
-                    <a
-                      href="https://soundiiz.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="py-2 px-3 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 text-zinc-800 dark:text-zinc-200 text-[11px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
-                    >
-                      <span>Soundiiz 변환기</span>
-                      <ExternalLink className="w-3 h-3 text-zinc-400" />
-                    </a>
-                  </div>
                 </div>
-
-                {/* Micro Guide */}
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 pt-1 leading-normal border-t border-zinc-200/60 dark:border-zinc-800">
-                  👉 변환기 페이지에서 <span className="font-bold underline text-zinc-700 dark:text-zinc-300">텍스트에서 가져오기</span>를 누른 뒤 <kbd className="px-1 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 font-mono text-[9px]">Cmd/Ctrl + V</kbd>로 붙여넣으면 내 계정으로 즉시 전송됩니다.
-                </p>
-              </div>
+              )}
             </section>
 
-            {/* Section 2: File Download & Link Sharing */}
+            {/* ============================================================== */}
+            {/* Section 3: File Download & Link Sharing */}
+            {/* ============================================================== */}
             <section className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
               <div className="flex items-center gap-1.5 mb-2.5">
                 <Layers className="w-4 h-4 text-zinc-400 shrink-0" />
@@ -312,7 +430,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     CSV 다운로드
                   </span>
                   <span className="text-[9px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    일괄 가져오기용
+                    엑셀/보관용
                   </span>
                 </button>
 
@@ -333,7 +451,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     {copiedType === 'text' ? '복사 완료!' : '텍스트 복사'}
                   </span>
                   <span className="text-[9px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    가수 - 제목 30곡
+                    가수 - 제목 {playlist.length}곡
                   </span>
                 </button>
 

@@ -13,15 +13,17 @@ ENV/
 *.wav
 /tmp/
 
-# Environment variables
+# Environment variables & Private Keys
 .env
 .env.local
 .env.*.local
+*.p8
 
 # Node / Next.js (for future web directory)
 node_modules/
 .next/
 out/
+*.tsbuildinfo
 
 # OS
 .DS_Store
