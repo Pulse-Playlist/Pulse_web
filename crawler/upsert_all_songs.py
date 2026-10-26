@@ -62,14 +62,23 @@ def main() -> None:
     with open(SONGS_JSON_PATH, "r", encoding="utf-8") as f:
         songs: List[Dict[str, Any]] = json.load(f)
 
-    print(f"=== [SUPABASE] Starting Upsert of {len(songs)} tracks to public.songs ===")
+    print(f"=== [SUPABASE] Starting Clean Sync of {len(songs)} tracks to public.songs ===")
     endpoint = f"{supabase_url}/rest/v1/songs?on_conflict=normalized_key"
     headers: Dict[str, str] = {
         "apikey": supabase_key,
-        "Authorization": f"Bearer {supabase_key}",
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates,return=minimal",
     }
+    if not supabase_key.startswith("sb_"):
+        headers["Authorization"] = f"Bearer {supabase_key}"
+
+    # Remove any old/duplicate rows before inserting the canonical 1,301 tracks
+    del_res = requests.delete(
+        f"{supabase_url}/rest/v1/songs?id=not.is.null",
+        headers={"apikey": supabase_key},
+        timeout=30,
+    )
+    print(f"  - Cleared previous rows (status {del_res.status_code})")
 
     batch_size = 200
     total_upserted = 0
