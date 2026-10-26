@@ -3,76 +3,110 @@
 @tailwind utilities;
 
 :root {
-  --background: #09090b;
-  --foreground: #f4f4f5;
+  --background: #f8f9fa;
+  --foreground: #0a0a0a;
+}
+
+.dark {
+  --background: #000000;
+  --foreground: #ffffff;
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: var(--background);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
 /* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #09090b;
-}
-::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
-}
-
-/* Glow & shadow effects */
-.glow-brand {
-  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.35);
-}
-.glow-cyan {
-  box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.35);
-}
-.text-shadow-sm {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-/* Custom Range Slider styling */
-input[type=range] {
-  -webkit-appearance: none;
   background: transparent;
 }
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 150, 0.5);
+}
 
-input[type=range]:focus {
+/* Range Slider Styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  width: 100%;
+}
+
+input[type="range"]:focus {
   outline: none;
 }
 
-input[type=range]::-webkit-slider-thumb {
+input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  height: 20px;
-  width: 20px;
+  appearance: none;
+  height: 28px;
+  width: 28px;
   border-radius: 50%;
-  background: #10b981;
+  background: #C4FF00;
   cursor: pointer;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
-  border: 2px solid #ffffff;
-  margin-top: -6px;
-  transition: transform 0.1s ease, background 0.2s ease;
+  box-shadow: 0 0 14px rgba(196, 255, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.4);
+  border: 3px solid #000000;
+  margin-top: -10px;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
 }
 
-input[type=range]::-webkit-slider-thumb:hover {
+.dark input[type="range"]::-webkit-slider-thumb {
+  border: 3px solid #ffffff;
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
   transform: scale(1.15);
-  background: #34d399;
+  box-shadow: 0 0 20px rgba(196, 255, 0, 1);
 }
 
-input[type=range]::-webkit-slider-runnable-track {
+input[type="range"]::-webkit-slider-runnable-track {
   width: 100%;
   height: 8px;
   cursor: pointer;
-  background: #27272a;
+  background: #e4e4e7;
   border-radius: 9999px;
+}
+
+.dark input[type="range"]::-webkit-slider-runnable-track {
+  background: #27272a;
+}
+
+/* Firefox slider */
+input[type="range"]::-moz-range-thumb {
+  height: 28px;
+  width: 28px;
+  border-radius: 50%;
+  background: #C4FF00;
+  cursor: pointer;
+  box-shadow: 0 0 14px rgba(196, 255, 0, 0.8);
+  border: 3px solid #000000;
+}
+
+.dark input[type="range"]::-moz-range-thumb {
+  border: 3px solid #ffffff;
+}
+
+input[type="range"]::-moz-range-track {
+  width: 100%;
+  height: 8px;
+  cursor: pointer;
+  background: #e4e4e7;
+  border-radius: 9999px;
+}
+
+.dark input[type="range"]::-moz-range-track {
+  background: #27272a;
 }

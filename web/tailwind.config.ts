@@ -10,42 +10,48 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        display: ["Outfit", "Inter", "sans-serif"],
+        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        display: ["Outfit", "Inter", "system-ui", "sans-serif"],
       },
       colors: {
         brand: {
-          50: "#ecfdf5",
-          100: "#d1fae5",
-          400: "#34d399",
-          500: "#10b981",
-          600: "#059669",
-          accent: "#06b6d4",
-          neon: "#22c55e",
-        },
-        cadence: {
-          recovery: "#38bdf8", // <130 Blue
-          aerobic: "#34d399",  // 130-149 Emerald
-          jog: "#a3e635",      // 150-164 Lime
-          marathon: "#f59e0b", // 165-179 Amber
-          sprint: "#f43f5e",   // 180+ Rose
+          DEFAULT: "#C4FF00", // Neon Lime Green
+          neon: "#C4FF00",
+          hover: "#B8F500",
+          black: "#0A0A0A",
+          obsidian: "#000000",
+          dark: "#0B0B0E",
+          cardDark: "#141418",
+          cardLight: "#FFFFFF",
+          borderDark: "#222228",
+          borderLight: "#E5E7EB",
+          blue: "#0044FF",
+          red: "#FF4B4B",
         },
       },
       keyframes: {
-        beatPulse: {
-          "0%, 100%": { transform: "scale(1)", opacity: "0.4" },
-          "50%": { transform: "scale(1.35)", opacity: "1", filter: "drop-shadow(0 0 12px rgba(34, 197, 94, 0.9))" },
+        ripple: {
+          "0%": { transform: "scale(0.8)", opacity: "0.8" },
+          "100%": { transform: "scale(2.2)", opacity: "0" },
         },
-        heartbeat: {
-          "0%, 100%": { transform: "scale(1)" },
-          "15%": { transform: "scale(1.2)" },
-          "30%": { transform: "scale(1)" },
-          "45%": { transform: "scale(1.15)" },
+        shake: {
+          "0%, 100%": { transform: "translateX(0)" },
+          "20%, 60%": { transform: "translateX(-6px)" },
+          "40%, 80%": { transform: "translateX(6px)" },
+        },
+        pulseGlow: {
+          "0%, 100%": {
+            boxShadow: "0 0 15px 2px rgba(196, 255, 0, 0.4)",
+          },
+          "50%": {
+            boxShadow: "0 0 35px 8px rgba(196, 255, 0, 0.8)",
+          },
         },
       },
       animation: {
-        "beat-pulse": "beatPulse 0.3s ease-out",
-        "heartbeat": "heartbeat 1.2s infinite",
+        ripple: "ripple 0.6s cubic-bezier(0, 0.2, 0.8, 1) forwards",
+        shake: "shake 0.4s ease-in-out",
+        "pulse-glow": "pulseGlow 1.5s infinite ease-in-out",
       },
     },
   },
