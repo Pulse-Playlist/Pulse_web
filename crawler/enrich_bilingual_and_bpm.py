@@ -17,7 +17,7 @@ import librosa
 import numpy as np
 import requests
 
-from audio_analyzer import load_audio_preview
+from audio_analyzer import load_audio_preview, resolve_bpm_multi_band_dsp
 from collectors import clean_parentheses
 from pipeline import upsert_to_supabase
 
@@ -141,51 +141,15 @@ def analyze_double_time_acoustic(
         if len(y) < sr * 5:
             return key, False, raw_bpm, {}
 
-        hop = 256
-        S = np.abs(librosa.stft(y, n_fft=2048, hop_length=hop))
-        freqs = librosa.fft_frequencies(sr=sr, n_fft=2048)
-
-        ks_onset = librosa.onset.onset_strength(
-            S=librosa.amplitude_to_db(S[(freqs >= 40) & (freqs <= 1500), :]),
-            sr=sr,
-            hop_length=hop,
+        new_bpm = resolve_bpm_multi_band_dsp(
+            y,
+            sr,
+            genre_tag=song.get("genre_tag"),
+            deezer_bpm=song.get("deezer_bpm"),
+            title=song.get("title"),
         )
-        ks_peaks = librosa.onset.onset_detect(
-            onset_envelope=ks_onset, sr=sr, hop_length=hop, delta=0.15, wait=8
-        )
-        ks_rate = len(ks_peaks) / (len(y) / sr)
-
-        centroid = float(np.mean(librosa.feature.spectral_centroid(y=y, sr=sr)))
-        flatness = float(np.mean(librosa.feature.spectral_flatness(y=y)))
-
-        onset_env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop)
-        _, beats = librosa.beat.beat_track(
-            onset_envelope=onset_env, sr=sr, hop_length=hop, start_bpm=raw_bpm
-        )
-        valid_b = beats[beats < len(onset_env) - 2]
-        b_vals = [np.max(onset_env[max(0, b - 1) : b + 2]) for b in valid_b]
-
-        if len(b_vals) >= 4:
-            even_mean = float(np.mean(b_vals[0::2]))
-            odd_mean = float(np.mean(b_vals[1::2]))
-            alt_ratio = float(max(even_mean, odd_mean) / (min(even_mean, odd_mean) + 1e-6))
-        else:
-            alt_ratio = 1.0
-
-        should_halve = (
-            (alt_ratio >= 1.38)
-            or (ks_rate < 2.60)
-            or (flatness < 0.015 and centroid < 2100)
-        )
-        new_bpm = round(raw_bpm / 2.0, 1) if should_halve else raw_bpm
-
-        metrics = {
-            "alt_ratio": alt_ratio,
-            "ks_rate": ks_rate,
-            "centroid": centroid,
-            "flatness": flatness,
-        }
-        return key, should_halve, new_bpm, metrics
+        should_halve = (abs(new_bpm - raw_bpm / 2.0) <= 3.0) and (raw_bpm >= 138.0)
+        return key, should_halve, new_bpm, {"resolved_bpm": new_bpm}
     except Exception as exc:
         print(f"[WARN] DSP analysis failed for {key}: {exc}")
         return key, False, raw_bpm, {}

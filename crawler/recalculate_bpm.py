@@ -4,6 +4,7 @@ Re-analyzes all tracks in crawler/data/songs.json using fine-resolution (hop_len
 autocorrelation peak parabolic interpolation and Deezer reference cross-checking.
 """
 
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import copy
 import json
@@ -20,6 +21,94 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 SONGS_JSON_PATH = DATA_DIR / "songs.json"
 WEB_SONGS_JSON_PATH = BASE_DIR.parent / "web" / "public" / "data" / "songs.json"
+WEB_PLAYLISTS_JSON_PATH = BASE_DIR.parent / "web" / "public" / "data" / "playlists.json"
+
+
+def deduplicate_tracks(songs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Deduplicates tracks sharing the same itunes_track_id (Class 4).
+    Merges collaborative artist names and preserves bilingual metadata.
+    """
+    by_id = defaultdict(list)
+    for s in songs:
+        tid = s.get("itunes_track_id")
+        by_id[tid].append(s)
+
+    deduped = []
+    for tid, items in by_id.items():
+        if len(items) == 1:
+            deduped.append(items[0])
+        else:
+            artists = []
+            for it in items:
+                a = it.get("artist", "").strip()
+                if a and a not in artists:
+                    artists.append(a)
+
+            best_item = max(
+                items,
+                key=lambda x: (
+                    bool(x.get("title_ko")),
+                    bool(x.get("artist_ko")),
+                    bool(x.get("deezer_bpm")),
+                    len(x.get("title", "")),
+                ),
+            )
+
+            if len(artists) > 1:
+                if set(artists) == {"No Brain", "노브레인"}:
+                    best_item["artist"] = "노브레인"
+                    best_item["artist_ko"] = "노브레인"
+                    best_item["artist_en"] = "No Brain"
+                elif set(artists) == {"GIRIBOY", "기리보이"}:
+                    best_item["artist"] = "기리보이"
+                    best_item["artist_ko"] = "기리보이"
+                    best_item["artist_en"] = "GIRIBOY"
+                else:
+                    collab_artist = ", ".join(artists)
+                    best_item["artist"] = collab_artist
+                    if not best_item.get("artist_ko"):
+                        best_item["artist_ko"] = collab_artist
+
+            deduped.append(best_item)
+
+    return deduped
+
+
+def sync_playlists_file(songs_by_id: Dict[Any, Dict[str, Any]]) -> None:
+    """Updates embedded song records inside web/public/data/playlists.json with the latest BPM values."""
+    if not WEB_PLAYLISTS_JSON_PATH.exists():
+        print(f"[WARN] {WEB_PLAYLISTS_JSON_PATH} not found, skipping playlists sync.")
+        return
+
+    with open(WEB_PLAYLISTS_JSON_PATH, "r", encoding="utf-8") as f:
+        playlists = json.load(f)
+
+    updated_songs_count = 0
+    for pl in playlists:
+        embedded_songs = pl.get("songs", [])
+        for i, s in enumerate(embedded_songs):
+            tid = s.get("itunes_track_id")
+            if tid in songs_by_id:
+                latest = songs_by_id[tid]
+                s["raw_bpm"] = latest.get("raw_bpm")
+                s["running_bpm"] = latest.get("running_bpm")
+                s["cadence_mode"] = latest.get("cadence_mode", "native")
+                s["beat_clarity"] = latest.get("beat_clarity")
+                s["beat_salience"] = latest.get("beat_salience")
+                s["timing_stability"] = latest.get("timing_stability")
+                s["energy_rms"] = latest.get("energy_rms")
+                s["running_score"] = latest.get("running_score")
+                s["artist"] = latest.get("artist", s.get("artist"))
+                s["artist_ko"] = latest.get("artist_ko", s.get("artist_ko"))
+                s["artist_en"] = latest.get("artist_en", s.get("artist_en"))
+                updated_songs_count += 1
+
+    tmp_path = WEB_PLAYLISTS_JSON_PATH.with_suffix(".json.tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(playlists, f, ensure_ascii=False, indent=2)
+    tmp_path.replace(WEB_PLAYLISTS_JSON_PATH)
+    print(f"[OK] Synchronized {updated_songs_count} embedded song entries in {WEB_PLAYLISTS_JSON_PATH}")
 
 
 def process_single_track(idx: int, track: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
@@ -28,28 +117,24 @@ def process_single_track(idx: int, track: Dict[str, Any]) -> Tuple[int, Dict[str
     title = updated.get("title", "")
     artist = updated.get("artist", "")
     preview_url = updated.get("preview_url")
+    itunes_track_id = updated.get("itunes_track_id")
 
     if not preview_url:
         return idx, updated
 
-    # 1. Fetch Deezer reference with fast timeout if not already present
+    # 1. Reuse existing Deezer reference if already present
     deezer_bpm = updated.get("deezer_bpm")
     deezer_track_id = updated.get("deezer_track_id")
-    if deezer_bpm is None:
-        try:
-            d_bpm, d_id = fetch_deezer_reference(title, artist, timeout=1.5)
-            if d_bpm is not None:
-                deezer_bpm = d_bpm
-            if d_id is not None:
-                deezer_track_id = d_id
-        except Exception:
-            pass
 
-    # 2. Run DSP analysis with retry
+    # 2. Run Multi-Band DSP analysis with retry
     dsp: Optional[Dict[str, Any]] = None
     for attempt in range(2):
         dsp = analyze_preview_audio(
-            preview_url, deezer_bpm=deezer_bpm, genre_tag=updated.get("genre_tag")
+            preview_url,
+            deezer_bpm=deezer_bpm,
+            genre_tag=updated.get("genre_tag"),
+            title=title,
+            track_id=itunes_track_id,
         )
         if dsp is not None:
             break
@@ -81,17 +166,21 @@ def main() -> None:
         sys.exit(1)
 
     with open(SONGS_JSON_PATH, "r", encoding="utf-8") as f:
-        songs: List[Dict[str, Any]] = json.load(f)
+        raw_songs: List[Dict[str, Any]] = json.load(f)
+
+    # 1. Deduplicate by itunes_track_id (Class 4)
+    songs = deduplicate_tracks(raw_songs)
+    print(f"[DEDUP] Deduplicated {len(raw_songs)} tracks down to {len(songs)} unique tracks (removed {len(raw_songs) - len(songs)} duplicates).")
 
     total_songs = len(songs)
-    print(f"=== [PULSE] Starting Continuous BPM Recalculation for {total_songs} songs ===")
-    print(f"Max workers: 16, fine resolution hop_length=128 with parabolic interpolation and octave disambiguation")
+    print(f"=== [PULSE] Starting Continuous BPM Recalculation for {total_songs} unique songs ===")
+    print(f"Max workers: 24, multi-band harmonic DSP resolver with parabolic interpolation & audio caching")
 
     results: List[Optional[Dict[str, Any]]] = [None] * total_songs
     completed_count = 0
     t0 = time.time()
 
-    with ThreadPoolExecutor(max_workers=16) as executor:
+    with ThreadPoolExecutor(max_workers=24) as executor:
         futures = {
             executor.submit(process_single_track, idx, track): idx
             for idx, track in enumerate(songs)
@@ -102,7 +191,7 @@ def main() -> None:
             results[idx] = updated_track
             completed_count += 1
 
-            if completed_count % 25 == 0 or completed_count == total_songs:
+            if completed_count % 50 == 0 or completed_count == total_songs:
                 elapsed = time.time() - t0
                 rate = completed_count / elapsed if elapsed > 0 else 0
                 remaining = (total_songs - completed_count) / rate if rate > 0 else 0
@@ -110,7 +199,7 @@ def main() -> None:
                     r["running_bpm"] for r in results if r is not None and "running_bpm" in r
                 )
                 print(
-                    f"[{completed_count:>3}/{total_songs}] "
+                    f"[{completed_count:>4}/{total_songs}] "
                     f"Elapsed: {elapsed:5.1f}s | "
                     f"ETA: {remaining:5.1f}s | "
                     f"Unique running_bpms so far: {len(current_bpms)}"
@@ -144,6 +233,10 @@ def main() -> None:
         print(f"[OK] Copied updated dataset to {WEB_SONGS_JSON_PATH}")
     else:
         print(f"[WARN] Destination directory {WEB_SONGS_JSON_PATH.parent} not found!")
+
+    # Synchronize web/public/data/playlists.json
+    songs_by_id = {s["itunes_track_id"]: s for s in final_songs if "itunes_track_id" in s}
+    sync_playlists_file(songs_by_id)
 
     if len(unique_bpms) < 60:
         print(f"[WARNING] Unique running_bpm count ({len(unique_bpms)}) is less than 60!")
