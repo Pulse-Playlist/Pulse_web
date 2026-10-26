@@ -14,9 +14,11 @@ import tempfile
 import time
 from typing import Any, Dict, Optional, Tuple
 
+import audioread
 import librosa
 import numpy as np
 import requests
+import soundfile as sf
 
 from collectors import clean_parentheses, is_artist_match
 from config import MAX_RUNNING_CADENCE, MIN_RUNNING_CADENCE
@@ -122,28 +124,37 @@ def normalize_running_cadence(
     max_cadence: float = MAX_RUNNING_CADENCE,
 ) -> Tuple[int, str]:
     """
-    Normalizes raw musical BPM into running cadence (SPM):
-    1. Fast tracks [140, 195] BPM -> 'native' (1 step/beat)
-    2. Half-tempo tracks [70, 99.9] BPM -> doubled to [140, 199] SPM ('double_time')
-    3. Dance/House/Rock [100, 139.9] BPM -> kept 'native' (brisk walk / warm-up / light jog pace)
-    4. Fast punk/DnB > 195 BPM -> halved into [98, 135] or [140, 195] SPM ('half_time')
+    Returns the true integer BPM of the track without artificially doubling
+    slow 70~99 BPM tracks into 140~198 BPM, ensuring 80 BPM tracks stay 80 BPM.
     """
-    if min_cadence <= raw_bpm <= max_cadence:
-        return int(round(raw_bpm)), "native"
-
-    if (min_cadence / 2.0) <= raw_bpm < 100.0:
-        return int(round(raw_bpm * 2.0)), "double_time"
-
-    if 100.0 <= raw_bpm < min_cadence:
-        return int(round(raw_bpm)), "native"
-
-    if raw_bpm > max_cadence:
-        return int(round(raw_bpm / 2.0)), "half_time"
-
-    if raw_bpm * 2.0 < min_cadence:
-        return int(round(raw_bpm * 2.0)), "double_time"
-
     return int(round(raw_bpm)), "native"
+
+
+def load_audio_preview(path: str, sr: int = 22050, mono: bool = True) -> Tuple[np.ndarray, int]:
+    """
+    Decodes audio file via SoundFile or native macOS CoreAudio (audioread)
+    supporting AAC/M4A/MP3 containers, converts to mono, and resamples to target sample rate.
+    """
+    try:
+        y, orig_sr = sf.read(path, dtype="float32")
+        if mono and y.ndim > 1:
+            y = y.mean(axis=1)
+        if sr is not None and orig_sr != sr:
+            y = librosa.resample(y, orig_sr=orig_sr, target_sr=sr)
+        return y, (sr or orig_sr)
+    except Exception:
+        with audioread.audio_open(path) as f:
+            orig_sr = f.samplerate
+            channels = f.channels
+            buf = b"".join(f)
+            y = np.frombuffer(buf, dtype=np.int16).astype(np.float32) / 32768.0
+            if channels > 1:
+                y = y.reshape(-1, channels)
+                if mono:
+                    y = y.mean(axis=1)
+            if sr is not None and orig_sr != sr:
+                y = librosa.resample(y, orig_sr=orig_sr, target_sr=sr)
+            return y, (sr or orig_sr)
 
 
 def analyze_preview_audio(
@@ -165,7 +176,7 @@ def analyze_preview_audio(
             tmp_path = tmp_file.name
 
         # 1. Decode audio at 22,050 Hz mono
-        y, sr = librosa.load(tmp_path, sr=22050, mono=True)
+        y, sr = load_audio_preview(tmp_path, sr=22050, mono=True)
         if len(y) < sr * 5:
             return None
 
@@ -204,15 +215,38 @@ def analyze_preview_audio(
         else:
             fine_bpm = coarse_bpm
 
-        # Cross-check with Deezer BPM if available (resolve half/double octave ambiguity)
+        # Cross-check with Deezer BPM if available, or disambiguate 2x octave harmonic
+        # (e.g. 80 BPM track with 8th-note hi-hats falsely locked at 160 BPM by start_bpm=128 prior)
         raw_bpm = fine_bpm
         if deezer_bpm and deezer_bpm > 55.0:
-            if abs(fine_bpm - deezer_bpm) <= 4.0:
+            if abs(fine_bpm - deezer_bpm) <= 5.0:
                 raw_bpm = (fine_bpm + deezer_bpm) / 2.0
             elif abs(fine_bpm * 2.0 - deezer_bpm) <= 6.0:
                 raw_bpm = (fine_bpm * 2.0 + deezer_bpm) / 2.0
-            elif abs(fine_bpm - deezer_bpm * 2.0) <= 6.0:
-                raw_bpm = (fine_bpm + deezer_bpm * 2.0) / 2.0
+            elif abs(fine_bpm / 2.0 - deezer_bpm) <= 6.0:
+                raw_bpm = (fine_bpm / 2.0 + deezer_bpm) / 2.0
+        elif 138.0 <= fine_bpm <= 198.0:
+            # Check if fine_bpm is a 2x harmonic of a true 69~99 BPM track
+            onset_low = librosa.onset.onset_strength(
+                y=y, sr=sr, hop_length=hop_length_fine, fmax=350.0, n_mels=32
+            )
+            ac_low = librosa.autocorrelate(onset_low, max_size=max_size)
+            L_curr = (60.0 * sr) / (hop_length_fine * fine_bpm)
+            k_curr = int(round(L_curr))
+            h_min = max(1, int(np.floor(2.0 * L_curr * 0.93)))
+            h_max = min(len(ac) - 2, int(np.ceil(2.0 * L_curr * 1.07)))
+            if h_min <= h_max and k_curr < len(ac_low):
+                kh = h_min + int(np.argmax(ac[h_min : h_max + 1]))
+                ac_fast = float(ac[k_curr])
+                ac_half = float(ac[kh])
+                low_fast = float(np.max(ac_low[max(1, k_curr - 3) : min(len(ac_low), k_curr + 4)]))
+                low_half = float(np.max(ac_low[max(1, kh - 4) : min(len(ac_low), kh + 5)]))
+                # If low-frequency kick/snare periodicity is stronger at half-tempo
+                # and unbiased full-band autocorrelation also supports half-tempo:
+                if low_half > low_fast * 1.08 and ac_half > ac_fast * 0.86:
+                    denom_h = ac[kh - 1] - 2.0 * ac[kh] + ac[kh + 1] + 1e-12
+                    delta_h = float(np.clip(0.5 * (ac[kh - 1] - ac[kh + 1]) / denom_h, -0.5, 0.5))
+                    raw_bpm = (60.0 * sr) / (hop_length_fine * (kh + delta_h))
 
         # 4. Normalize into Running Cadence (SPM)
         running_bpm, cadence_mode = normalize_running_cadence(raw_bpm)

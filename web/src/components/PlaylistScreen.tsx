@@ -320,7 +320,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               <AnimatePresence mode="popLayout">
                 {playlist.map((song, index) => {
                   const songKey = song.normalized_key || song.title + song.artist;
-                  const songBpm = getSongBpm(song, targetBpm);
+                  const songBpm = getSongBpm(song);
                   const isPlayingThis =
                     currentPlayingSong?.normalized_key === song.normalized_key && isPlayingAudio;
                   const isExactOrClose = Math.abs(songBpm - targetBpm) <= 2;
@@ -573,7 +573,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               <AnimatePresence mode="popLayout">
                 {recommendedSongs.map((song, index) => {
                   const songKey = song.normalized_key || song.title + song.artist;
-                  const songBpm = getSongBpm(song, targetBpm);
+                  const songBpm = getSongBpm(song);
                 const isPlayingThis =
                   currentPlayingSong?.normalized_key === song.normalized_key && isPlayingAudio;
                 const isExactOrClose = Math.abs(songBpm - targetBpm) <= 2;
