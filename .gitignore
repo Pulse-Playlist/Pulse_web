@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+*.egg-info/
+
+# Audio temp files
+*.m4a
+*.mp3
+*.wav
+/tmp/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Node / Next.js (for future web directory)
+node_modules/
+.next/
+out/
+
+# OS
+.DS_Store
