@@ -160,6 +160,7 @@ def load_audio_preview(path: str, sr: int = 22050, mono: bool = True) -> Tuple[n
 def analyze_preview_audio(
     preview_url: str,
     deezer_bpm: Optional[float] = None,
+    genre_tag: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Downloads the 30-second audio preview (.m4a or .mp3) to a temporary file,
@@ -247,6 +248,46 @@ def analyze_preview_audio(
                     denom_h = ac[kh - 1] - 2.0 * ac[kh] + ac[kh + 1] + 1e-12
                     delta_h = float(np.clip(0.5 * (ac[kh - 1] - ac[kh + 1]) / denom_h, -0.5, 0.5))
                     raw_bpm = (60.0 * sr) / (hop_length_fine * (kh + delta_h))
+
+        # Acoustic double-time (75~96 BPM falsely detected as 150~192 BPM) disambiguation
+        if genre_tag == "hiphop" and raw_bpm >= 146.0:
+            raw_bpm = round(raw_bpm / 2.0, 1)
+        elif raw_bpm >= 148.0:
+            hop_dt = 256
+            S_dt = np.abs(librosa.stft(y, n_fft=2048, hop_length=hop_dt))
+            freqs_dt = librosa.fft_frequencies(sr=sr, n_fft=2048)
+            ks_onset_dt = librosa.onset.onset_strength(
+                S=librosa.amplitude_to_db(S_dt[(freqs_dt >= 40) & (freqs_dt <= 1500), :]),
+                sr=sr,
+                hop_length=hop_dt,
+            )
+            ks_peaks_dt = librosa.onset.onset_detect(
+                onset_envelope=ks_onset_dt, sr=sr, hop_length=hop_dt, delta=0.15, wait=8
+            )
+            ks_rate_dt = len(ks_peaks_dt) / (len(y) / sr)
+            centroid_dt = float(np.mean(librosa.feature.spectral_centroid(y=y, sr=sr)))
+            flatness_dt = float(np.mean(librosa.feature.spectral_flatness(y=y)))
+            onset_env_dt = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_dt)
+            _, beats_dt = librosa.beat.beat_track(
+                onset_envelope=onset_env_dt, sr=sr, hop_length=hop_dt, start_bpm=raw_bpm
+            )
+            valid_b_dt = beats_dt[beats_dt < len(onset_env_dt) - 2]
+            b_vals_dt = [np.max(onset_env_dt[max(0, b - 1) : b + 2]) for b in valid_b_dt]
+            if len(b_vals_dt) >= 4:
+                even_mean_dt = float(np.mean(b_vals_dt[0::2]))
+                odd_mean_dt = float(np.mean(b_vals_dt[1::2]))
+                alt_ratio_dt = float(
+                    max(even_mean_dt, odd_mean_dt) / (min(even_mean_dt, odd_mean_dt) + 1e-6)
+                )
+            else:
+                alt_ratio_dt = 1.0
+
+            if (
+                (alt_ratio_dt >= 1.38)
+                or (ks_rate_dt < 2.60)
+                or (flatness_dt < 0.015 and centroid_dt < 2100)
+            ):
+                raw_bpm = round(raw_bpm / 2.0, 1)
 
         # 4. Normalize into Running Cadence (SPM)
         running_bpm, cadence_mode = normalize_running_cadence(raw_bpm)
