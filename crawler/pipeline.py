@@ -64,6 +64,32 @@ def save_songs_json(songs: List[Dict[str, Any]], path: Path = SONGS_JSON_PATH) -
     tmp_path.replace(path)
 
 
+ALLOWED_SUPABASE_COLUMNS = {
+    "title",
+    "artist",
+    "normalized_key",
+    "album",
+    "cover_url",
+    "duration_sec",
+    "genre_tag",
+    "raw_bpm",
+    "running_bpm",
+    "cadence_mode",
+    "deezer_bpm",
+    "beat_clarity",
+    "beat_salience",
+    "timing_stability",
+    "energy_rms",
+    "running_score",
+    "preview_url",
+    "itunes_track_id",
+    "deezer_track_id",
+    "melon_song_id",
+    "bugs_track_id",
+    "source",
+}
+
+
 def upsert_to_supabase(songs: List[Dict[str, Any]]) -> None:
     """Upserts analyzed song records to Supabase if credentials are configured."""
     load_dotenv(BASE_DIR / ".env")
@@ -90,7 +116,11 @@ def upsert_to_supabase(songs: List[Dict[str, Any]]) -> None:
 
         batch_size = 200
         for idx in range(0, len(songs), batch_size):
-            batch = songs[idx : idx + batch_size]
+            raw_batch = songs[idx : idx + batch_size]
+            batch = [
+                {k: v for k, v in song.items() if k in ALLOWED_SUPABASE_COLUMNS}
+                for song in raw_batch
+            ]
             res = requests.post(endpoint, headers=headers, json=batch, timeout=20)
             if res.status_code not in (200, 201, 204):
                 print(f"[WARN] Supabase batch upsert returned {res.status_code}: {res.text[:200]}")
@@ -135,7 +165,7 @@ def analyze_candidate(
     if use_deezer:
         deezer_bpm, deezer_track_id = fetch_deezer_reference(title, artist)
 
-    dsp = analyze_preview_audio(preview_url, deezer_bpm=deezer_bpm)
+    dsp = analyze_preview_audio(preview_url, deezer_bpm=deezer_bpm, genre_tag=genre_tag)
     if not dsp:
         return None
 

@@ -29,6 +29,14 @@ function loadLocalSongs(): Song[] {
 }
 
 async function loadSongs(): Promise<Song[]> {
+  const localSongs = loadLocalSongs();
+  const localByKey = new Map<string, Song>();
+  for (const s of localSongs) {
+    if (s.normalized_key) {
+      localByKey.set(s.normalized_key, s);
+    }
+  }
+
   const supabaseUrl = (
     process.env.SUPABASE_URL ||
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -52,13 +60,23 @@ async function loadSongs(): Promise<Song[]> {
 
       const res = await fetch(`${supabaseUrl}/rest/v1/songs?select=*&limit=2000`, {
         headers,
-        next: { revalidate: 300 },
+        next: { revalidate: 60 },
       });
 
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length >= 100) {
-          return data as Song[];
+          return (data as Song[]).map((row) => {
+            const local = row.normalized_key ? localByKey.get(row.normalized_key) : undefined;
+            if (!local) return row;
+            return {
+              ...row,
+              title_ko: row.title_ko || local.title_ko || row.title,
+              title_en: row.title_en || local.title_en || row.title,
+              artist_ko: row.artist_ko || local.artist_ko || row.artist,
+              artist_en: row.artist_en || local.artist_en || row.artist,
+            };
+          });
         }
       }
     } catch (err) {
@@ -66,7 +84,7 @@ async function loadSongs(): Promise<Song[]> {
     }
   }
 
-  return loadLocalSongs();
+  return localSongs;
 }
 
 export async function GET(request: NextRequest) {

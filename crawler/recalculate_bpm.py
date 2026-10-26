@@ -48,7 +48,9 @@ def process_single_track(idx: int, track: Dict[str, Any]) -> Tuple[int, Dict[str
     # 2. Run DSP analysis with retry
     dsp: Optional[Dict[str, Any]] = None
     for attempt in range(2):
-        dsp = analyze_preview_audio(preview_url, deezer_bpm=deezer_bpm)
+        dsp = analyze_preview_audio(
+            preview_url, deezer_bpm=deezer_bpm, genre_tag=updated.get("genre_tag")
+        )
         if dsp is not None:
             break
         time.sleep(0.3)
