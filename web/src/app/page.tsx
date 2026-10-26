@@ -382,37 +382,29 @@ export default function Page() {
   // Re-shuffle playlist handler
   const handleReshuffle = () => {
     const newPlaylist = generatePlaylist(allSongs, targetBpm, selectedCategories);
-    const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, newPlaylist, 8);
+    const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, newPlaylist, 10);
     setPlaylist(newPlaylist);
     setRecommendedSongs(recs);
-    showToast('새로운 30곡으로 다시 섞었어요!', 'success');
+    showToast(`${targetBpm}±2 BPM ${newPlaylist.length}곡으로 다시 섞었어요!`, 'success');
   };
 
   // Refresh recommendations handler
   const handleRefreshRecommendations = () => {
-    const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, playlist, 8);
+    const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, playlist, 10);
     setRecommendedSongs(recs);
-    showToast('새로운 추천곡을 불러왔어요', 'info');
+    showToast('추천곡 목록을 새로고침했어요', 'info');
   };
 
   // Remove song from playlist
   const handleRemoveSong = (songKey: string) => {
-    setPlaylist((prev) => {
-      const removedSong = prev.find((s) => (s.normalized_key || s.title + s.artist) === songKey);
-      if (removedSong && currentPlayingSong?.normalized_key === removedSong.normalized_key) {
-        handleCloseMiniPlayer();
-      }
-      const updated = prev.filter((s) => (s.normalized_key || s.title + s.artist) !== songKey);
-      showToast('곡이 목록에서 삭제되었어요', 'info');
-      return updated;
-    });
-
-    // Refresh recommendations to include newly available slots
-    setTimeout(() => {
-      setRecommendedSongs(() => {
-        return getRecommendedSongs(allSongs, targetBpm, selectedCategories, playlist, 8);
-      });
-    }, 50);
+    const removedSong = playlist.find((s) => (s.normalized_key || s.title + s.artist) === songKey);
+    if (removedSong && currentPlayingSong?.normalized_key === removedSong.normalized_key) {
+      handleCloseMiniPlayer();
+    }
+    const updated = playlist.filter((s) => (s.normalized_key || s.title + s.artist) !== songKey);
+    setPlaylist(updated);
+    setRecommendedSongs(getRecommendedSongs(allSongs, targetBpm, selectedCategories, updated, 10));
+    showToast('곡이 목록에서 삭제되었어요', 'info');
   };
 
   // Add recommended song to playlist
