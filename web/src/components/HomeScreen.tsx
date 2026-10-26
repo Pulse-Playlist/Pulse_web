@@ -2,204 +2,418 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { ArrowRight, Sparkles } from 'lucide-react';
-import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'framer-motion';
+import { ArrowRight, Sparkles, Heart, Zap, Flame, Plus, Music2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from './ThemeToggle';
-import { playTapKick } from '@/lib/soundEffects';
+import { playTapKick, playPopSound } from '@/lib/soundEffects';
+import { AppLanguage, GenreTag, SavedPlaylist, getSongTitle, getSongArtist } from '@/types/song';
+import { getPlaylistCoverUrl } from '@/lib/playlistGenerator';
 
 interface HomeScreenProps {
   isDark: boolean;
   onToggleTheme: () => void;
+  lang: AppLanguage;
+  onToggleLang: () => void;
   onStart: () => void;
+  onSelectPlaylist: (playlist: SavedPlaylist) => void;
+  communityPlaylists?: SavedPlaylist[];
+  onLikePlaylist?: (id: string) => void;
   totalSongsCount?: number;
+}
+
+type BpmFilter = 'all' | 'under130' | '131to160' | 'over161';
+
+const GENRE_LABELS: Record<AppLanguage, Record<GenreTag, string>> = {
+  ko: {
+    hiphop: '힙합',
+    rock: '락',
+    kpop: '케이팝',
+    band: '밴드',
+  },
+  en: {
+    hiphop: 'HIP-HOP',
+    rock: 'ROCK',
+    kpop: 'K-POP',
+    band: 'BAND',
+  },
+};
+
+function formatTimeAgo(isoDate: string, lang: AppLanguage): string {
+  try {
+    const diffMs = Date.now() - new Date(isoDate).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 5) return lang === 'ko' ? '방금 전' : 'just now';
+    if (diffMins < 60) return lang === 'ko' ? `${diffMins}분 전` : `${diffMins}m ago`;
+    if (diffHours < 24) return lang === 'ko' ? `${diffHours}시간 전` : `${diffHours}h ago`;
+    return lang === 'ko' ? `${diffDays}일 전` : `${diffDays}d ago`;
+  } catch {
+    return lang === 'ko' ? '최근' : 'recent';
+  }
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   isDark,
   onToggleTheme,
+  lang,
+  onToggleLang,
   onStart,
-  totalSongsCount = 465,
+  onSelectPlaylist,
+  communityPlaylists = [],
+  onLikePlaylist,
+  totalSongsCount = 1320,
 }) => {
   const logoSrc = isDark ? '/logos/logo-dark.png' : '/logos/logo-green.png';
+  const [activeFilter, setActiveFilter] = useState<BpmFilter>('all');
+  const [likedMap, setLikedMap] = useState<Record<string, number>>({});
+  const [userLikedSet, setUserLikedSet] = useState<Set<string>>(new Set());
 
-  // 3D Tilt Card Physics with MotionValues & Springs
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
+  const handleLike = (id: string, initialLikes: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    playPopSound();
 
-  const springConfig = { damping: 22, stiffness: 280 };
-  const mouseXSpring = useSpring(x, springConfig);
-  const mouseYSpring = useSpring(y, springConfig);
+    const isAlreadyLiked = userLikedSet.has(id);
+    const currentLikes = likedMap[id] !== undefined ? likedMap[id] : initialLikes;
+    const nextLikes = isAlreadyLiked ? Math.max(0, currentLikes - 1) : currentLikes + 1;
 
-  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ['14deg', '-14deg']);
-  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ['-14deg', '14deg']);
+    setLikedMap((prev) => ({ ...prev, [id]: nextLikes }));
+    setUserLikedSet((prev) => {
+      const next = new Set(prev);
+      if (isAlreadyLiked) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
-  // Shockwave ripples spawned on logo tap
-  const [shockwaves, setShockwaves] = useState<{ id: number }[]>([]);
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const xPct = mouseX / rect.width - 0.5;
-    const yPct = mouseY / rect.height - 0.5;
-    x.set(xPct);
-    y.set(yPct);
+    onLikePlaylist?.(id);
   };
 
-  const handlePointerLeave = () => {
-    x.set(0);
-    y.set(0);
-  };
-
-  const handleLogoTap = () => {
-    playTapKick(1);
-    const newId = Date.now();
-    setShockwaves((prev) => [...prev.slice(-3), { id: newId }]);
-    setTimeout(() => {
-      setShockwaves((prev) => prev.filter((item) => item.id !== newId));
-    }, 900);
-  };
+  const filteredPlaylists = communityPlaylists.filter((pl) => {
+    if (activeFilter === 'under130') return pl.bpm <= 130;
+    if (activeFilter === '131to160') return pl.bpm > 130 && pl.bpm <= 160;
+    if (activeFilter === 'over161') return pl.bpm > 160;
+    return true;
+  });
 
   return (
-    <div className="flex flex-col min-h-dvh justify-between p-6 select-none relative overflow-hidden">
-      {/* Top Bar */}
-      <header className="flex items-center justify-between pt-2 z-10">
+    <div className="flex flex-col min-h-dvh select-none pb-12">
+      {/* Top Header Bar */}
+      <header className="sticky top-0 z-20 flex items-center justify-between px-5 py-3 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center gap-2">
           <motion.div
             whileHover={{ scale: 1.08, rotate: 4 }}
             whileTap={{ scale: 0.92 }}
             className="relative w-7 h-7 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm"
           >
-            <Image src={logoSrc} alt="PULSE" fill className="object-cover" />
+            <Image src={logoSrc} alt="PULSE" fill className="object-cover" priority />
           </motion.div>
           <span className="font-black tracking-tighter text-lg font-display text-zinc-900 dark:text-white">
             PULSE
           </span>
         </div>
-        <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
+
+        <div className="flex items-center gap-2">
+          {/* KO / EN Language Toggle Pill */}
+          <motion.button
+            whileTap={{ scale: 0.94 }}
+            type="button"
+            onClick={() => {
+              playPopSound();
+              onToggleLang();
+            }}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black border transition-colors bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 cursor-pointer shadow-sm"
+            aria-label="언어 전환 / Language toggle"
+            title="한국어 / English"
+          >
+            <span className={lang === 'ko' ? 'text-black dark:text-[#C4FF00] font-black' : 'text-zinc-400 font-semibold'}>
+              한
+            </span>
+            <span className="text-zinc-400 text-[10px]">/</span>
+            <span className={lang === 'en' ? 'text-black dark:text-[#C4FF00] font-black' : 'text-zinc-400 font-semibold'}>
+              EN
+            </span>
+          </motion.button>
+
+          <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
+        </div>
       </header>
 
-      {/* Center Hero: 3D Tilt Card + Heartbeat Pulse & ECG */}
-      <main className="flex-1 flex flex-col items-center justify-center text-center my-auto py-8 z-10">
-        <div className="relative flex items-center justify-center mb-8">
-          {/* Animated SVG ECG heartbeat line pulsing behind the logo */}
-          <div className="absolute w-[340px] h-28 pointer-events-none -z-10 opacity-30 dark:opacity-40 flex items-center justify-center">
-            <svg
-              viewBox="0 0 340 80"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-full h-full stroke-[#C4FF00]"
-            >
+      {/* Main Container */}
+      <main className="px-5 pt-4 space-y-6">
+        {/* Compact, Punchy Hero Card */}
+        <section className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-zinc-100 via-zinc-100 to-zinc-200 dark:from-zinc-900 dark:via-zinc-900/95 dark:to-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-xl">
+          {/* Animated Background Pulse Glow */}
+          <div className="absolute top-0 right-0 w-44 h-44 bg-[#C4FF00]/15 dark:bg-[#C4FF00]/10 rounded-full blur-3xl pointer-events-none -mr-10 -mt-10" />
+
+          {/* Pulsing ECG line behind text */}
+          <div className="absolute right-3 top-4 w-32 h-16 pointer-events-none opacity-25 dark:opacity-40">
+            <svg viewBox="0 0 160 50" fill="none" className="w-full h-full stroke-[#C4FF00]">
               <motion.path
-                d="M 10 40 L 95 40 L 105 24 L 115 56 L 125 8 L 137 72 L 149 32 L 157 44 L 165 40 L 330 40"
+                d="M 5 25 L 45 25 L 52 10 L 60 40 L 70 5 L 82 45 L 90 20 L 98 30 L 105 25 L 155 25"
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 initial={{ pathLength: 0.2, pathOffset: 0 }}
-                animate={{
-                  pathOffset: [0, 1],
-                  opacity: [0.35, 0.9, 0.35],
-                }}
-                transition={{
-                  pathOffset: { duration: 2.8, repeat: Infinity, ease: 'linear' },
-                  opacity: { duration: 1.4, repeat: Infinity, ease: 'easeInOut' },
-                }}
+                animate={{ pathOffset: [0, 1] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
               />
             </svg>
           </div>
 
-          {/* Continuous Ambient Heartbeat Glow Ring */}
-          <motion.div
-            animate={{
-              scale: [1, 1.08, 1],
-              opacity: [0.3, 0.65, 0.3],
-            }}
-            transition={{
-              duration: 1.5,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-            className="absolute w-56 h-56 rounded-[38px] bg-[#C4FF00]/15 dark:bg-[#C4FF00]/10 blur-xl pointer-events-none -z-10"
-          />
+          <div className="relative z-10 space-y-3">
+            {/* Pulsing Neon Badge */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/90 dark:bg-black border border-[#C4FF00]/40 text-[11px] font-black text-[#C4FF00] shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#C4FF00] animate-ping" />
+              <Sparkles className="w-3 h-3 text-[#C4FF00]" />
+              <span>
+                {lang === 'ko'
+                  ? `엄선된 러닝 트랙 ${totalSongsCount}곡`
+                  : `${totalSongsCount} Running Tracks Ready`}
+              </span>
+            </div>
 
-          {/* Interactive 3D-Tilt PULSE Logo Card */}
-          <motion.div
-            style={{
-              rotateX,
-              rotateY,
-              transformStyle: 'preserve-3d',
-            }}
-            onPointerMove={handlePointerMove}
-            onPointerLeave={handlePointerLeave}
-            onClick={handleLogoTap}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.96 }}
-            className="relative w-52 h-52 rounded-[32px] overflow-hidden shadow-2xl border border-zinc-200/90 dark:border-zinc-800/90 bg-white dark:bg-black cursor-pointer group select-none transition-shadow duration-300 hover:shadow-[#C4FF00]/25"
-          >
-            <Image
-              src={logoSrc}
-              alt="PULSE Logo"
-              fill
-              priority
-              className="object-cover pointer-events-none transition-transform duration-500 group-hover:scale-105"
-            />
+            {/* Headline */}
+            <div>
+              <h1 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white leading-snug">
+                {lang === 'ko' ? '내 템포에 맞춘 러닝 플리' : 'Find Your Cadence Flow'}
+              </h1>
+              <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 mt-1">
+                {lang === 'ko'
+                  ? '러닝 케이던스에 딱 맞는 음악으로 페이스를 유지하세요'
+                  : 'Sync your running pace with precision-tuned BPM tracks'}
+              </p>
+            </div>
 
-            {/* Subtle holographic glare highlight */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 dark:via-white/5 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            {/* Main CTA Button: + 플레이리스트 만들기 */}
+            <motion.button
+              type="button"
+              onClick={() => {
+                playTapKick(1);
+                onStart();
+              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              className="w-full mt-2 py-3.5 px-5 rounded-2xl bg-[#C4FF00] hover:bg-[#B5F000] text-black font-black text-sm shadow-lg shadow-[#C4FF00]/25 transition-all flex items-center justify-center gap-2 group cursor-pointer border border-[#B0EC00]"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>{lang === 'ko' ? '플레이리스트 만들기' : 'Create Playlist'}</span>
+              <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
+            </motion.button>
+          </div>
+        </section>
 
-            {/* Expanding Neon Shockwave Rings on Tap */}
-            <AnimatePresence>
-              {shockwaves.map((item) => (
-                <motion.div
-                  key={item.id}
-                  initial={{ scale: 0.2, opacity: 0.9 }}
-                  animate={{ scale: 2.2, opacity: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.75, ease: 'easeOut' }}
-                  className="absolute inset-0 rounded-[32px] border-2 border-[#C4FF00] pointer-events-none"
-                />
-              ))}
-            </AnimatePresence>
-          </motion.div>
-        </div>
+        {/* Community Playlist Feed Section */}
+        <section className="space-y-3">
+          {/* Section Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-500 dark:bg-orange-500/20">
+                <Flame className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-base font-black text-zinc-900 dark:text-white">
+                  {lang === 'ko' ? '실시간 러닝 플리 피드' : 'Community Feed'}
+                </h2>
+                <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                  {lang === 'ko' ? '러너들이 직접 달리고 저장한 인기 믹스' : 'Trending cadence mixes saved by runners'}
+                </p>
+              </div>
+            </div>
 
-        {/* Minimal Title & Tracks Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="flex flex-col items-center gap-2.5"
-        >
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[11px] font-extrabold text-zinc-600 dark:text-zinc-400">
-            <Sparkles className="w-3 h-3 text-[#C4FF00]" />
-            <span>엄선된 러닝 트랙 {totalSongsCount}곡 수록</span>
+            <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">
+              {filteredPlaylists.length}
+              {lang === 'ko' ? '개' : ' lists'}
+            </span>
           </div>
 
-          <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white">
-            내 템포에 맞춘 러닝 플레이리스트
-          </h1>
-          <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-            러닝 케이던스에 딱 맞는 음악으로 페이스를 유지하세요
-          </p>
-        </motion.div>
-      </main>
+          {/* Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+            <button
+              type="button"
+              onClick={() => {
+                playPopSound();
+                setActiveFilter('all');
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-black shrink-0 transition-all cursor-pointer ${
+                activeFilter === 'all'
+                  ? 'bg-zinc-900 text-white dark:bg-white dark:text-black shadow-sm'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+              }`}
+            >
+              {lang === 'ko' ? '전체 (All)' : 'All'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                playPopSound();
+                setActiveFilter('under130');
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-black shrink-0 transition-all cursor-pointer ${
+                activeFilter === 'under130'
+                  ? 'bg-lime-500 text-black shadow-sm'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+              }`}
+            >
+              🟢 ~130
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                playPopSound();
+                setActiveFilter('131to160');
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-black shrink-0 transition-all cursor-pointer ${
+                activeFilter === '131to160'
+                  ? 'bg-blue-500 text-white shadow-sm'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+              }`}
+            >
+              🔵 131~160
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                playPopSound();
+                setActiveFilter('over161');
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-black shrink-0 transition-all cursor-pointer ${
+                activeFilter === 'over161'
+                  ? 'bg-red-500 text-white shadow-sm'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+              }`}
+            >
+              🔴 161+
+            </button>
+          </div>
 
-      {/* Bottom CTA with Spring Physics */}
-      <footer className="pb-4 pt-2 z-10">
-        <motion.button
-          type="button"
-          onClick={() => {
-            playTapKick(1);
-            onStart();
-          }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.95 }}
-          className="w-full py-4 px-6 rounded-2xl bg-[#C4FF00] hover:bg-[#B8F500] text-black font-black text-lg shadow-lg shadow-[#C4FF00]/25 transition-colors flex items-center justify-center gap-2 group cursor-pointer"
-        >
-          <span>플레이리스트 만들기</span>
-          <ArrowRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
-        </motion.button>
-      </footer>
+          {/* Playlist Cards List */}
+          <div className="space-y-3 pt-1">
+            <AnimatePresence mode="popLayout">
+              {filteredPlaylists.map((pl) => {
+                const cover = getPlaylistCoverUrl(pl.bpm);
+                const currentLikes = likedMap[pl.id] !== undefined ? likedMap[pl.id] : pl.likes;
+                const isLiked = userLikedSet.has(pl.id);
+
+                return (
+                  <motion.div
+                    key={pl.id}
+                    layout
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                    onClick={() => onSelectPlaylist(pl)}
+                    className="p-4 rounded-3xl bg-zinc-100/90 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all cursor-pointer group space-y-3"
+                  >
+                    {/* Top Row: BPM Cover + Playlist Name & Author */}
+                    <div className="flex items-start gap-3">
+                      <div className="relative w-12 h-12 rounded-2xl overflow-hidden shrink-0 border border-zinc-300 dark:border-zinc-700 bg-black shadow-sm group-hover:scale-105 transition-transform">
+                        <Image src={cover} alt={pl.name} fill className="object-cover" />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-black text-[#C4FF00] dark:bg-[#C4FF00] dark:text-black shrink-0 shadow-xs">
+                            {pl.bpm} BPM
+                          </span>
+                          <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 truncate">
+                            {pl.author} · {formatTimeAgo(pl.createdAt, lang)}
+                          </span>
+                        </div>
+
+                        <h3 className="text-sm font-black text-zinc-900 dark:text-white truncate mt-1 group-hover:text-[#00A344] dark:group-hover:text-[#C4FF00] transition-colors">
+                          {pl.name}
+                        </h3>
+                      </div>
+                    </div>
+
+                    {/* Category Badges & Track Count */}
+                    <div className="flex items-center justify-between text-xs pt-0.5">
+                      <div className="flex flex-wrap gap-1">
+                        {pl.categories.map((cat) => (
+                          <span
+                            key={cat}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                          >
+                            {GENRE_LABELS[lang][cat] || cat}
+                          </span>
+                        ))}
+                      </div>
+
+                      <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 shrink-0">
+                        {pl.songs.length}
+                        {lang === 'ko' ? '곡 수록' : ' tracks'}
+                      </span>
+                    </div>
+
+                    {/* Mini Preview of 2-3 Tracks */}
+                    {pl.songs && pl.songs.length > 0 && (
+                      <div className="space-y-1 bg-white dark:bg-black/40 rounded-xl p-2.5 border border-zinc-200/80 dark:border-zinc-800/80 text-[11px]">
+                        {pl.songs.slice(0, 3).map((song, i) => (
+                          <div
+                            key={song.normalized_key || `${song.title}-${i}`}
+                            className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400 truncate"
+                          >
+                            <span className="text-[10px] text-zinc-400 font-mono w-3 shrink-0">
+                              {i + 1}.
+                            </span>
+                            <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate">
+                              {getSongArtist(song, lang)}
+                            </span>
+                            <span className="text-zinc-400">-</span>
+                            <span className="truncate">{getSongTitle(song, lang)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Bottom Action Row: Like Button + '바로 듣기 →' Button */}
+                    <div className="flex items-center justify-between pt-1 border-t border-zinc-200/60 dark:border-zinc-800/60">
+                      <motion.button
+                        whileTap={{ scale: 0.85 }}
+                        type="button"
+                        onClick={(e) => handleLike(pl.id, pl.likes, e)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          isLiked
+                            ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                            : 'bg-white dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:text-rose-500'
+                        }`}
+                        title="좋아요 / Like"
+                      >
+                        <Heart
+                          className={`w-3.5 h-3.5 ${
+                            isLiked ? 'fill-rose-500 text-rose-500' : 'text-zinc-400'
+                          }`}
+                        />
+                        <span>{currentLikes}</span>
+                      </motion.button>
+
+                      <motion.button
+                        whileTap={{ scale: 0.94 }}
+                        type="button"
+                        onClick={() => onSelectPlaylist(pl)}
+                        className="flex items-center gap-1.5 py-1.5 px-3.5 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black text-xs font-black shadow-sm group-hover:bg-[#C4FF00] group-hover:text-black transition-all cursor-pointer"
+                      >
+                        <Music2 className="w-3.5 h-3.5" />
+                        <span>{lang === 'ko' ? '바로 듣기 →' : 'Open →'}</span>
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+
+            {filteredPlaylists.length === 0 && (
+              <div className="p-8 rounded-3xl bg-zinc-100 dark:bg-zinc-900/50 text-center border border-dashed border-zinc-300 dark:border-zinc-800">
+                <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400">
+                  {lang === 'ko' ? '해당 BPM 조건의 플레이리스트가 없어요' : 'No playlists in this BPM range'}
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
     </div>
   );
 };

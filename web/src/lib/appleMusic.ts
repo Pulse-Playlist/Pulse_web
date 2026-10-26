@@ -268,9 +268,12 @@ export async function createAppleMusicPlaylist(
   playlist: Song[],
   targetBpm: number,
   selectedCategories: GenreTag[] = [],
-  onProgress?: CreatePlaylistProgressCallback
+  onProgress?: CreatePlaylistProgressCallback,
+  customPlaylistName?: string
 ): Promise<AppleMusicPlaylistResult> {
-  const playlistName = `PULSE ${targetBpm} BPM 러닝 플레이리스트`;
+  const playlistName = (customPlaylistName && customPlaylistName.trim())
+    ? customPlaylistName.trim()
+    : `PULSE ${targetBpm} BPM 러닝 플레이리스트`;
   const genresStr = selectedCategories.length > 0 ? ` [${selectedCategories.join(', ').toUpperCase()}]` : '';
   const description = `PULSE RUN 맞춤 케이던스 믹스${genresStr} · ${playlist.length}곡 · https://pulserun.app`;
 
