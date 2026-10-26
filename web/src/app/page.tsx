@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Song, GenreTag, SongsResponse } from '@/types/song';
 import { generatePlaylist, getRecommendedSongs } from '@/lib/playlistGenerator';
 import { HomeScreen } from '@/components/HomeScreen';
@@ -29,6 +30,9 @@ export default function Page() {
   const [playlist, setPlaylist] = useState<Song[]>([]);
   const [recommendedSongs, setRecommendedSongs] = useState<Song[]>([]);
 
+  // Continuous playback state
+  const [isContinuousPlay, setIsContinuousPlay] = useState<boolean>(true);
+
   // Dark / Light Theme state
   const [isDark, setIsDark] = useState<boolean>(true);
 
@@ -41,6 +45,32 @@ export default function Page() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(30);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Synchronized refs for audio event callbacks to prevent stale closures
+  const playlistRef = useRef<Song[]>(playlist);
+  const currentPlayingSongRef = useRef<Song | null>(currentPlayingSong);
+  const isContinuousPlayRef = useRef<boolean>(isContinuousPlay);
+
+  useEffect(() => {
+    playlistRef.current = playlist;
+  }, [playlist]);
+
+  useEffect(() => {
+    currentPlayingSongRef.current = currentPlayingSong;
+  }, [currentPlayingSong]);
+
+  useEffect(() => {
+    isContinuousPlayRef.current = isContinuousPlay;
+  }, [isContinuousPlay]);
+
+  // Toast notification helper
+  const showToast = useCallback((text: string, type: 'info' | 'success' | 'warning' = 'info') => {
+    setToast({
+      id: `${Date.now()}-${Math.random()}`,
+      text,
+      type,
+    });
+  }, []);
 
   // Initialize theme from localStorage & document class
   useEffect(() => {
@@ -76,44 +106,80 @@ export default function Page() {
     });
   };
 
-  const showToast = useCallback((text: string, type: 'info' | 'success' | 'warning' = 'info') => {
-    setToast({
-      id: `${Date.now()}-${Math.random()}`,
-      text,
-      type,
-    });
-  }, []);
+  // Internal audio play helper
+  const playTrackInternal = useCallback(
+    (song: Song) => {
+      if (!audioRef.current) return;
+      const audio = audioRef.current;
 
-  // Fetch song database
-  useEffect(() => {
-    async function loadSongs() {
-      try {
-        setIsLoadingSongs(true);
-        const res = await fetch('/api/songs');
-        if (!res.ok) throw new Error('곡 데이터베이스 로드 실패');
-        const data: SongsResponse = await res.json();
-        setAllSongs(data.songs || []);
-      } catch (err) {
-        console.error('Failed to load songs:', err);
-        showToast('곡 목록을 불러오지 못했습니다. 다시 시도해 주세요.', 'warning');
-      } finally {
-        setIsLoadingSongs(false);
+      if (!song.preview_url) {
+        showToast('이 곡은 미리듣기를 지원하지 않습니다', 'info');
+        return;
       }
-    }
-    loadSongs();
-  }, [showToast]);
 
-  // Audio element setup
+      audio.pause();
+      audio.src = song.preview_url;
+      audio.load();
+      audio
+        .play()
+        .then(() => {
+          setCurrentPlayingSong(song);
+          setIsPlayingAudio(true);
+        })
+        .catch((err) => {
+          console.warn('Playback error:', err);
+          setIsPlayingAudio(false);
+        });
+    },
+    [showToast]
+  );
+
+  // Setup Audio instance and continuous playback auto-advance listener
   useEffect(() => {
     const audio = new Audio();
     audioRef.current = audio;
 
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
     const onLoadedMetadata = () => setDuration(audio.duration || 30);
+
+    // Auto-advance to the next track when preview ends
     const onEnded = () => {
+      if (isContinuousPlayRef.current && playlistRef.current.length > 0) {
+        const current = currentPlayingSongRef.current;
+        const list = playlistRef.current;
+        const currentKey = current?.normalized_key || (current ? current.title + current.artist : '');
+
+        const idx = list.findIndex(
+          (s) => (s.normalized_key || s.title + s.artist) === currentKey
+        );
+
+        if (idx !== -1) {
+          const nextIdx = idx + 1 < list.length ? idx + 1 : 0; // loop back to first song
+          const nextSong = list[nextIdx];
+
+          if (nextSong && nextSong.preview_url) {
+            audio.pause();
+            audio.src = nextSong.preview_url;
+            audio.load();
+            audio
+              .play()
+              .then(() => {
+                setCurrentPlayingSong(nextSong);
+                setIsPlayingAudio(true);
+                showToast(`▶️ 다음 곡: ${nextSong.title}`, 'info');
+              })
+              .catch(() => {
+                setIsPlayingAudio(false);
+              });
+            return;
+          }
+        }
+      }
+
       setIsPlayingAudio(false);
       setCurrentTime(0);
     };
+
     const onError = () => {
       setIsPlayingAudio(false);
       showToast('미리듣기 음원을 재생할 수 없습니다', 'warning');
@@ -134,6 +200,65 @@ export default function Page() {
     };
   }, [showToast]);
 
+  // Fetch song database and handle initial URL query params (?bpm=170&cats=band,rock)
+  useEffect(() => {
+    async function loadSongs() {
+      try {
+        setIsLoadingSongs(true);
+        const res = await fetch('/api/songs');
+        if (!res.ok) throw new Error('곡 데이터베이스 로드 실패');
+        const data: SongsResponse = await res.json();
+        const songs = data.songs || [];
+        setAllSongs(songs);
+
+        // Check URL query parameters for shared playlist
+        if (typeof window !== 'undefined' && songs.length > 0) {
+          const params = new URLSearchParams(window.location.search);
+          const bpmParam = params.get('bpm');
+          const catsParam = params.get('cats');
+
+          if (bpmParam || catsParam) {
+            let activeBpm = 160;
+            if (bpmParam) {
+              const parsedBpm = parseInt(bpmParam, 10);
+              if (!isNaN(parsedBpm) && parsedBpm >= 60 && parsedBpm <= 220) {
+                activeBpm = parsedBpm;
+                setTargetBpm(activeBpm);
+              }
+            }
+
+            let activeCats: GenreTag[] = ['hiphop', 'rock', 'band'];
+            if (catsParam) {
+              const validCats: GenreTag[] = ['hiphop', 'rock', 'band', 'kpop'];
+              const parsed = catsParam
+                .split(',')
+                .map((c) => c.trim().toLowerCase() as GenreTag)
+                .filter((c) => validCats.includes(c));
+              if (parsed.length > 0) {
+                activeCats = parsed.slice(0, 3);
+                setSelectedCategories(activeCats);
+              }
+            }
+
+            // Auto-generate playlist and direct to playlist screen
+            const initialPlaylist = generatePlaylist(songs, activeBpm, activeCats);
+            const recs = getRecommendedSongs(songs, activeBpm, activeCats, initialPlaylist, 8);
+            setPlaylist(initialPlaylist);
+            setRecommendedSongs(recs);
+            setStep('playlist');
+            showToast(`공유받은 ${activeBpm} BPM 러닝 믹스를 열었어요!`, 'success');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load songs:', err);
+        showToast('곡 목록을 불러오지 못했습니다. 다시 시도해 주세요.', 'warning');
+      } finally {
+        setIsLoadingSongs(false);
+      }
+    }
+    loadSongs();
+  }, [showToast]);
+
   // Play / Pause song preview handler
   const handlePlaySong = (song: Song) => {
     if (!audioRef.current) return;
@@ -150,25 +275,60 @@ export default function Page() {
       return;
     }
 
-    // Play new song
-    if (!song.preview_url) {
-      showToast('이 곡은 미리듣기를 지원하지 않습니다', 'info');
+    playTrackInternal(song);
+  };
+
+  // Continuous playback toggle handler on header card
+  const handleToggleContinuousPlay = () => {
+    setIsContinuousPlay(true);
+    if (!audioRef.current) return;
+
+    if (isPlayingAudio) {
+      audioRef.current.pause();
+      setIsPlayingAudio(false);
+    } else {
+      if (currentPlayingSong) {
+        audioRef.current.play().then(() => setIsPlayingAudio(true)).catch(() => setIsPlayingAudio(false));
+      } else if (playlist.length > 0) {
+        playTrackInternal(playlist[0]);
+      }
+    }
+  };
+
+  // Next song in playlist
+  const handlePlayNextSong = () => {
+    if (!playlist.length) return;
+    const current = currentPlayingSongRef.current;
+    if (!current) {
+      playTrackInternal(playlist[0]);
       return;
     }
+    const currentKey = current.normalized_key || current.title + current.artist;
+    const idx = playlist.findIndex((s) => (s.normalized_key || s.title + s.artist) === currentKey);
 
-    audio.pause();
-    audio.src = song.preview_url;
-    audio.load();
-    audio
-      .play()
-      .then(() => {
-        setCurrentPlayingSong(song);
-        setIsPlayingAudio(true);
-      })
-      .catch((err) => {
-        console.warn('Playback error:', err);
-        setIsPlayingAudio(false);
-      });
+    if (idx !== -1 && idx + 1 < playlist.length) {
+      playTrackInternal(playlist[idx + 1]);
+    } else if (playlist.length > 0) {
+      playTrackInternal(playlist[0]);
+    }
+  };
+
+  // Prev song in playlist
+  const handlePlayPrevSong = () => {
+    if (!playlist.length) return;
+    const current = currentPlayingSongRef.current;
+    if (!current) {
+      playTrackInternal(playlist[0]);
+      return;
+    }
+    const currentKey = current.normalized_key || current.title + current.artist;
+    const idx = playlist.findIndex((s) => (s.normalized_key || s.title + s.artist) === currentKey);
+
+    if (idx > 0) {
+      playTrackInternal(playlist[idx - 1]);
+    } else if (playlist.length > 0) {
+      playTrackInternal(playlist[playlist.length - 1]);
+    }
   };
 
   const handleToggleMiniPlayerPlay = () => {
@@ -278,69 +438,82 @@ export default function Page() {
         {/* Global In-App Toast */}
         <Toast toast={toast} onClose={() => setToast(null)} />
 
-        {/* 4-Step Screen Routing */}
-        {step === 'home' && (
-          <HomeScreen
-            isDark={isDark}
-            onToggleTheme={handleToggleTheme}
-            onStart={() => setStep('bpm')}
-            totalSongsCount={allSongs.length || 465}
-          />
-        )}
+        {/* 4-Step Screen Routing with Smooth Spring Transitions */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, y: 14, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.985 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.7 }}
+            className="flex-1 flex flex-col w-full"
+          >
+            {step === 'home' && (
+              <HomeScreen
+                isDark={isDark}
+                onToggleTheme={handleToggleTheme}
+                onStart={() => setStep('bpm')}
+                totalSongsCount={allSongs.length || 465}
+              />
+            )}
 
-        {step === 'bpm' && (
-          <BpmScreen
-            bpm={targetBpm}
-            onChangeBpm={setTargetBpm}
-            onOpenTapTempo={() => setStep('tap')}
-            onNext={() => setStep('category')}
-            onBack={() => setStep('home')}
-            isDark={isDark}
-            onToggleTheme={handleToggleTheme}
-          />
-        )}
+            {step === 'bpm' && (
+              <BpmScreen
+                bpm={targetBpm}
+                onChangeBpm={setTargetBpm}
+                onOpenTapTempo={() => setStep('tap')}
+                onNext={() => setStep('category')}
+                onBack={() => setStep('home')}
+                isDark={isDark}
+                onToggleTheme={handleToggleTheme}
+              />
+            )}
 
-        {step === 'tap' && (
-          <TapTempoScreen
-            initialBpm={targetBpm}
-            onConfirmBpm={handleConfirmTapBpm}
-            onBack={() => setStep('bpm')}
-            isDark={isDark}
-            onToggleTheme={handleToggleTheme}
-          />
-        )}
+            {step === 'tap' && (
+              <TapTempoScreen
+                initialBpm={targetBpm}
+                onConfirmBpm={handleConfirmTapBpm}
+                onBack={() => setStep('bpm')}
+                isDark={isDark}
+                onToggleTheme={handleToggleTheme}
+              />
+            )}
 
-        {step === 'category' && (
-          <CategoryScreen
-            selectedCategories={selectedCategories}
-            onToggleCategory={handleToggleCategory}
-            onNext={handleGeneratePlaylist}
-            onBack={() => setStep('bpm')}
-            isDark={isDark}
-            onToggleTheme={handleToggleTheme}
-            showToast={showToast}
-          />
-        )}
+            {step === 'category' && (
+              <CategoryScreen
+                selectedCategories={selectedCategories}
+                onToggleCategory={handleToggleCategory}
+                onNext={handleGeneratePlaylist}
+                onBack={() => setStep('bpm')}
+                isDark={isDark}
+                onToggleTheme={handleToggleTheme}
+                showToast={showToast}
+              />
+            )}
 
-        {step === 'playlist' && (
-          <PlaylistScreen
-            targetBpm={targetBpm}
-            selectedCategories={selectedCategories}
-            playlist={playlist}
-            recommendedSongs={recommendedSongs}
-            currentPlayingSong={currentPlayingSong}
-            isPlayingAudio={isPlayingAudio}
-            onPlaySong={handlePlaySong}
-            onRemoveSong={handleRemoveSong}
-            onAddSong={handleAddSong}
-            onReshuffle={handleReshuffle}
-            onRefreshRecommendations={handleRefreshRecommendations}
-            onBack={() => setStep('category')}
-            isDark={isDark}
-            onToggleTheme={handleToggleTheme}
-            showToast={showToast}
-          />
-        )}
+            {step === 'playlist' && (
+              <PlaylistScreen
+                targetBpm={targetBpm}
+                selectedCategories={selectedCategories}
+                playlist={playlist}
+                recommendedSongs={recommendedSongs}
+                currentPlayingSong={currentPlayingSong}
+                isPlayingAudio={isPlayingAudio}
+                isContinuousPlay={isContinuousPlay}
+                onPlaySong={handlePlaySong}
+                onToggleContinuousPlay={handleToggleContinuousPlay}
+                onRemoveSong={handleRemoveSong}
+                onAddSong={handleAddSong}
+                onReshuffle={handleReshuffle}
+                onRefreshRecommendations={handleRefreshRecommendations}
+                onBack={() => setStep('category')}
+                isDark={isDark}
+                onToggleTheme={handleToggleTheme}
+                showToast={showToast}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
 
         {/* Floating Mini Player Dock (visible on any screen when audio is active) */}
         {currentPlayingSong && (
@@ -351,6 +524,8 @@ export default function Page() {
             duration={duration}
             onTogglePlay={handleToggleMiniPlayerPlay}
             onClose={handleCloseMiniPlayer}
+            onNext={handlePlayNextSong}
+            onPrev={handlePlayPrevSong}
           />
         )}
       </div>
