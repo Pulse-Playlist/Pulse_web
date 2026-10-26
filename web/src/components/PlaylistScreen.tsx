@@ -249,7 +249,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               ) : (
                 <>
                   <Play className="w-4 h-4 fill-current ml-0.5" />
-                  <span>30곡 연속 논스톱 프리뷰 재생</span>
+                  <span>{playlist.length}곡 연속 논스톱 프리뷰 재생</span>
                 </>
               )}
             </button>
@@ -305,14 +305,14 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
           {playlist.length === 0 ? (
             <div className="p-8 rounded-3xl bg-zinc-100 dark:bg-zinc-900/50 text-center border border-dashed border-zinc-300 dark:border-zinc-800">
               <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400 mb-2">
-                플레이리스트가 비어있어요
+                선택한 장르에 {targetBpm} ± 2 BPM 곡이 없어요
               </p>
               <button
                 type="button"
-                onClick={handleReshuffleClick}
+                onClick={onBack}
                 className="px-4 py-2 rounded-xl bg-[#C4FF00] text-black text-xs font-black shadow-md"
               >
-                다시 30곡 생성하기
+                다른 장르나 BPM 선택하기
               </button>
             </div>
           ) : (
@@ -320,7 +320,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               <AnimatePresence mode="popLayout">
                 {playlist.map((song, index) => {
                   const songKey = song.normalized_key || song.title + song.artist;
-                  const songBpm = getSongBpm(song);
+                  const songBpm = getSongBpm(song, targetBpm);
                   const isPlayingThis =
                     currentPlayingSong?.normalized_key === song.normalized_key && isPlayingAudio;
                   const isExactOrClose = Math.abs(songBpm - targetBpm) <= 2;
@@ -562,11 +562,18 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
             </button>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <AnimatePresence mode="popLayout">
-              {recommendedSongs.map((song, index) => {
-                const songKey = song.normalized_key || song.title + song.artist;
-                const songBpm = getSongBpm(song);
+          {recommendedSongs.length === 0 ? (
+            <div className="p-5 rounded-2xl bg-zinc-100/70 dark:bg-zinc-900/40 text-center border border-dashed border-zinc-200 dark:border-zinc-800">
+              <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                현재 선택한 장르의 {targetBpm} ± 2 BPM 곡이 모두 플레이리스트에 담겨 있어요
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <AnimatePresence mode="popLayout">
+                {recommendedSongs.map((song, index) => {
+                  const songKey = song.normalized_key || song.title + song.artist;
+                  const songBpm = getSongBpm(song, targetBpm);
                 const isPlayingThis =
                   currentPlayingSong?.normalized_key === song.normalized_key && isPlayingAudio;
                 const isExactOrClose = Math.abs(songBpm - targetBpm) <= 2;
@@ -651,8 +658,9 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                   </motion.div>
                 );
               })}
-            </AnimatePresence>
-          </div>
+              </AnimatePresence>
+            </div>
+          )}
         </section>
       </main>
 
