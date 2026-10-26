@@ -60,21 +60,21 @@ async function loadSongs(): Promise<Song[]> {
         headers.Authorization = `Bearer ${supabaseKey}`;
       }
 
-      const [resPage1, resPage2] = await Promise.all([
-        fetch(`${supabaseUrl}/rest/v1/songs?select=*&order=id.asc&offset=0&limit=1000`, {
-          headers,
-          cache: 'no-store',
-        }),
-        fetch(`${supabaseUrl}/rest/v1/songs?select=*&order=id.asc&offset=1000&limit=1000`, {
-          headers,
-          cache: 'no-store',
-        }),
-      ]);
+      const pageOffsets = [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000];
+      const responses = await Promise.all(
+        pageOffsets.map((offset) =>
+          fetch(`${supabaseUrl}/rest/v1/songs?select=*&order=id.asc&offset=${offset}&limit=1000`, {
+            headers,
+            cache: 'no-store',
+          })
+        )
+      );
 
-      if (resPage1.ok) {
-        const page1 = await resPage1.json();
-        const page2 = resPage2.ok ? await resPage2.json() : [];
-        const data = [...(Array.isArray(page1) ? page1 : []), ...(Array.isArray(page2) ? page2 : [])];
+      if (responses[0].ok) {
+        const pages = await Promise.all(
+          responses.map(async (r) => (r.ok ? await r.json() : []))
+        );
+        const data = pages.flatMap((p) => (Array.isArray(p) ? p : []));
         if (data.length >= 100) {
           return (data as Song[]).map((row) => {
             const local = row.normalized_key ? localByKey.get(row.normalized_key) : undefined;
