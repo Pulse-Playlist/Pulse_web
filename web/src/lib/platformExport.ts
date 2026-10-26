@@ -64,6 +64,17 @@ export interface PlatformMetadata {
 }
 
 export const PLATFORMS: Record<PlatformKey, PlatformMetadata> = {
+  apple_music: {
+    key: 'apple_music',
+    name: 'Apple Music',
+    koreanName: '애플 뮤직',
+    badge: '원클릭 공식 연동',
+    badgeColor: 'bg-rose-500/10 text-rose-500 border-rose-500/30',
+    accentColor: '#FA243C',
+    homeUrl: 'https://music.apple.com/kr',
+    description: 'MusicKit JS로 내 보관함에 즉시 플레이리스트 생성',
+    getTrackUrl: getAppleMusicUrl,
+  },
   youtube_music: {
     key: 'youtube_music',
     name: 'YouTube Music',
@@ -72,7 +83,7 @@ export const PLATFORMS: Record<PlatformKey, PlatformMetadata> = {
     badgeColor: 'bg-red-500/10 text-red-500 border-red-500/30',
     accentColor: '#FF0000',
     homeUrl: 'https://music.youtube.com',
-    description: 'TuneMyMusic 변환기로 유튜브 뮤직 계정에 즉시 추가',
+    description: 'YouTube Music 검색 및 웹 바로가기',
     getTrackUrl: getYouTubeMusicUrl,
   },
   spotify: {
@@ -83,19 +94,8 @@ export const PLATFORMS: Record<PlatformKey, PlatformMetadata> = {
     badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
     accentColor: '#1DB954',
     homeUrl: 'https://open.spotify.com',
-    description: '텍스트 붙여넣기 및 Soundiiz로 10초 만에 플리 생성',
+    description: 'Spotify 검색 및 웹 바로가기',
     getTrackUrl: getSpotifyUrl,
-  },
-  apple_music: {
-    key: 'apple_music',
-    name: 'Apple Music',
-    koreanName: '애플 뮤직',
-    badge: '고음질 무손실',
-    badgeColor: 'bg-pink-500/10 text-pink-500 border-pink-500/30',
-    accentColor: '#FA243C',
-    homeUrl: 'https://music.apple.com/kr',
-    description: 'iTunes 매칭 ID 지원 및 TuneMyMusic 연동',
-    getTrackUrl: getAppleMusicUrl,
   },
   melon: {
     key: 'melon',
@@ -112,7 +112,7 @@ export const PLATFORMS: Record<PlatformKey, PlatformMetadata> = {
     key: 'bugs',
     name: 'Bugs',
     koreanName: '벅스',
-    badge: 'FLAC 고음질',
+    badge: '고음질 FLAC',
     badgeColor: 'bg-orange-500/10 text-orange-500 border-orange-500/30',
     accentColor: '#FF3B30',
     homeUrl: 'https://music.bugs.co.kr',
