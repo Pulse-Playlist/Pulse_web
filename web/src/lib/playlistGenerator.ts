@@ -1,37 +1,24 @@
 import { GenreTag, Song } from '@/types/song';
 
 /**
- * Returns the effective BPM of a song relative to an optional targetBpm.
- * Checks both `running_bpm` and `Math.round(raw_bpm)` (as well as half/double octave)
- * so if a song matches `targetBpm ± 2` in either native or double-time cadence,
- * it returns the exact BPM value in that target window.
+ * Returns the true musical BPM of a song (`Math.round(raw_bpm)`).
+ * Does NOT artificially double slow 80 BPM songs to 160 BPM or halve fast songs,
+ * ensuring the song's actual perceived tempo matches the user's selected BPM.
  */
-export function getSongBpm(song: Song, targetBpm?: number): number {
-  const runBpm = song.running_bpm && !isNaN(song.running_bpm) ? Math.round(song.running_bpm) : 0;
+export function getSongBpm(song: Song): number {
   const rawBpm = song.raw_bpm && !isNaN(song.raw_bpm) ? Math.round(song.raw_bpm) : 0;
-  const doubleRaw = rawBpm > 0 ? Math.round(song.raw_bpm * 2) : 0;
-  const halfRaw = rawBpm > 0 ? Math.round(song.raw_bpm / 2) : 0;
-
-  if (typeof targetBpm === 'number' && targetBpm > 0) {
-    const candidates = [runBpm, rawBpm, doubleRaw, halfRaw].filter((v) => v > 0);
-    for (const c of candidates) {
-      if (Math.abs(c - targetBpm) <= 2) {
-        return c;
-      }
-    }
-  }
-
-  if (runBpm > 0) return runBpm;
   if (rawBpm > 0) return rawBpm;
+  const runBpm = song.running_bpm && !isNaN(song.running_bpm) ? Math.round(song.running_bpm) : 0;
+  if (runBpm > 0) return runBpm;
   return 160;
 }
 
 /**
- * Checks whether a song strictly falls within `targetBpm ± 2`.
+ * Checks whether a song's true BPM strictly falls within `targetBpm ± 2`.
  */
 export function isSongWithinTargetBpm(song: Song, targetBpm: number, tolerance = 2): boolean {
-  const matchedBpm = getSongBpm(song, targetBpm);
-  return Math.abs(matchedBpm - targetBpm) <= tolerance;
+  const actualBpm = getSongBpm(song);
+  return Math.abs(actualBpm - targetBpm) <= tolerance;
 }
 
 /**
@@ -111,7 +98,7 @@ export function generatePlaylist(
       if (pickedKeys.has(key)) continue;
 
       pickedKeys.add(key);
-      const matchedBpm = getSongBpm(s, targetBpm);
+      const matchedBpm = getSongBpm(s);
       pickedSongs.push({
         ...s,
         running_bpm: matchedBpm,
@@ -145,7 +132,7 @@ export function getRecommendedSongs(
     )
     .map((s) => ({
       ...s,
-      running_bpm: getSongBpm(s, targetBpm),
+      running_bpm: getSongBpm(s),
     }));
 
   return shuffleArray(eligible).slice(0, limit);

@@ -32,17 +32,18 @@ def process_single_track(idx: int, track: Dict[str, Any]) -> Tuple[int, Dict[str
     if not preview_url:
         return idx, updated
 
-    # 1. Fetch Deezer reference with fast timeout
+    # 1. Fetch Deezer reference with fast timeout if not already present
     deezer_bpm = updated.get("deezer_bpm")
     deezer_track_id = updated.get("deezer_track_id")
-    try:
-        d_bpm, d_id = fetch_deezer_reference(title, artist, timeout=2.5)
-        if d_bpm is not None:
-            deezer_bpm = d_bpm
-        if d_id is not None:
-            deezer_track_id = d_id
-    except Exception:
-        pass
+    if deezer_bpm is None:
+        try:
+            d_bpm, d_id = fetch_deezer_reference(title, artist, timeout=1.5)
+            if d_bpm is not None:
+                deezer_bpm = d_bpm
+            if d_id is not None:
+                deezer_track_id = d_id
+        except Exception:
+            pass
 
     # 2. Run DSP analysis with retry
     dsp: Optional[Dict[str, Any]] = None
@@ -50,12 +51,12 @@ def process_single_track(idx: int, track: Dict[str, Any]) -> Tuple[int, Dict[str
         dsp = analyze_preview_audio(preview_url, deezer_bpm=deezer_bpm)
         if dsp is not None:
             break
-        time.sleep(0.5)
+        time.sleep(0.3)
 
     if dsp is not None:
         updated["raw_bpm"] = dsp["raw_bpm"]
-        updated["running_bpm"] = dsp["running_bpm"]
-        updated["cadence_mode"] = dsp["cadence_mode"]
+        updated["running_bpm"] = int(round(dsp["raw_bpm"]))
+        updated["cadence_mode"] = "native"
         updated["deezer_bpm"] = dsp["deezer_bpm"]
         updated["deezer_track_id"] = deezer_track_id
         updated["beat_clarity"] = dsp["beat_clarity"]
@@ -63,6 +64,11 @@ def process_single_track(idx: int, track: Dict[str, Any]) -> Tuple[int, Dict[str
         updated["timing_stability"] = dsp["timing_stability"]
         updated["energy_rms"] = dsp["energy_rms"]
         updated["running_score"] = dsp["running_score"]
+    else:
+        # Fallback if preview audio temporary download failed
+        if "raw_bpm" in updated:
+            updated["running_bpm"] = int(round(updated["raw_bpm"]))
+            updated["cadence_mode"] = "native"
 
     return idx, updated
 
@@ -77,13 +83,13 @@ def main() -> None:
 
     total_songs = len(songs)
     print(f"=== [PULSE] Starting Continuous BPM Recalculation for {total_songs} songs ===")
-    print(f"Max workers: 8, fine resolution hop_length=128 with parabolic interpolation")
+    print(f"Max workers: 16, fine resolution hop_length=128 with parabolic interpolation and octave disambiguation")
 
     results: List[Optional[Dict[str, Any]]] = [None] * total_songs
     completed_count = 0
     t0 = time.time()
 
-    with ThreadPoolExecutor(max_workers=8) as executor:
+    with ThreadPoolExecutor(max_workers=16) as executor:
         futures = {
             executor.submit(process_single_track, idx, track): idx
             for idx, track in enumerate(songs)
