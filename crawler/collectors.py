@@ -6,6 +6,7 @@ Track Collectors for PULSE:
 4. iTunes Artist Catalog Batch Collector with strict Korean/English alias verification
 """
 
+import json
 import re
 import time
 from typing import Any, Dict, List, Optional, Set
@@ -190,10 +191,108 @@ def fetch_bugs_top100() -> List[Dict[str, Any]]:
         return []
 
 
-def fetch_itunes_artist_catalog(artist_query: str, limit: int = 35, sleep_sec: float = 0.8) -> List[Dict[str, Any]]:
+def fetch_via_apple_music_lookup(artist_query: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """
+    Fallback artist catalog retriever using Apple Music web search + iTunes lookup endpoint.
+    Bypasses /search rate limits and provides direct access to artist's official iTunes tracks.
+    """
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9,ko-KR,ko;q=0.8",
+    }
+    catalog: List[Dict[str, Any]] = []
+    seen_keys: Set[str] = set()
+
+    try:
+        r = requests.get(
+            "https://music.apple.com/us/search",
+            params={"term": artist_query},
+            headers=headers,
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return catalog
+        soup = BeautifulSoup(r.text, "html.parser")
+        tag = soup.find("script", id="serialized-server-data")
+        if not tag or not tag.string:
+            return catalog
+        data = json.loads(tag.string)
+        sections = data.get("data", [{}])[0].get("data", {}).get("sections", [])
+        artist_sec = [s for s in sections if "artist" in s.get("id", "")]
+        if not artist_sec or not artist_sec[0].get("items"):
+            return catalog
+
+        adam_id = artist_sec[0]["items"][0].get("contentDescriptor", {}).get("identifiers", {}).get("storeAdamID")
+        if not adam_id:
+            return catalog
+
+        res = requests.get(
+            "https://itunes.apple.com/lookup",
+            params={"id": adam_id, "entity": "song", "limit": limit},
+            timeout=10,
+        )
+        if res.status_code != 200:
+            return catalog
+
+        results = res.json().get("results", [])
+        for item in results:
+            if item.get("wrapperType") != "track":
+                continue
+            preview_url = item.get("previewUrl")
+            title = item.get("trackName") or ""
+            artist_name = item.get("artistName") or ""
+            if not preview_url or not is_valid_track_title(title):
+                continue
+            if not is_artist_match(artist_query, artist_name):
+                continue
+
+            album_name = item.get("collectionName") or ""
+            lower_album = album_name.lower()
+            if any(
+                ba.lower() in lower_album
+                for ba in (
+                    "REVIVE+", "IVE SECRET", "IVE EMPATHY", "PUREFLOW", "ODYSSEY",
+                    "The Action", "HOME: DELUXE", "No Genre", "play hard",
+                    "NO TRAGEDY", "TRY WITH US", "LEMONADE", "WDA", "KISS N TELL", "Rich Man"
+                )
+            ):
+                continue
+
+            key = make_normalized_key(artist_query, title)
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+
+            artwork = item.get("artworkUrl100") or ""
+            if "100x100bb" in artwork:
+                artwork = artwork.replace("100x100bb", "600x600bb")
+
+            duration_ms = item.get("trackTimeMillis")
+            catalog.append(
+                {
+                    "title": clean_parentheses(title),
+                    "artist": artist_query,
+                    "album": album_name,
+                    "cover_url": artwork,
+                    "duration_sec": int(round(duration_ms / 1000.0)) if duration_ms else None,
+                    "preview_url": preview_url,
+                    "itunes_track_id": item.get("trackId"),
+                    "source": "itunes_lookup",
+                }
+            )
+        return catalog
+    except Exception:
+        return catalog
+
+
+def fetch_itunes_artist_catalog(artist_query: str, limit: int = 65, sleep_sec: float = 0.35) -> List[Dict[str, Any]]:
     """
     Fetches up to `limit` songs for an artist from iTunes Store (KR first, then US fallback)
-    with strict artist alias validation.
+    with strict artist alias validation. Falls back to Apple Music lookup on rate limit.
     """
     url = "https://itunes.apple.com/search"
     catalog: List[Dict[str, Any]] = []
@@ -211,8 +310,7 @@ def fetch_itunes_artist_catalog(artist_query: str, limit: int = 35, sleep_sec: f
             try:
                 res = requests.get(url, params=params, timeout=12)
                 if res.status_code in (403, 429):
-                    time.sleep(3.5 * (attempt + 1))
-                    continue
+                    break
                 if res.status_code != 200:
                     break
                 results = res.json().get("results", [])
@@ -263,10 +361,18 @@ def fetch_itunes_artist_catalog(artist_query: str, limit: int = 35, sleep_sec: f
                 time.sleep(sleep_sec)
                 break
             except Exception:
-                time.sleep(1.5)
+                time.sleep(1.0)
 
-        if len(catalog) >= 8:
+        if len(catalog) >= 16:
             break
+
+    if len(catalog) < 12:
+        lookup_catalog = fetch_via_apple_music_lookup(artist_query, limit=limit)
+        for item in lookup_catalog:
+            key = make_normalized_key(item["artist"], item["title"])
+            if key not in seen_keys:
+                seen_keys.add(key)
+                catalog.append(item)
 
     return catalog
 
@@ -286,11 +392,11 @@ def collect_category_candidates(
     collected: List[Dict[str, Any]] = []
     seen_keys: Set[str] = set(existing_keys)
 
-    per_artist_quota = max(8, (target_candidates // max(1, len(seed_artists))) + 3)
+    per_artist_quota = max(12, (target_candidates // max(1, len(seed_artists))) + 5)
     for artist in seed_artists:
         if len(collected) >= target_candidates:
             break
-        catalog = fetch_itunes_artist_catalog(artist, limit=35, sleep_sec=0.6)
+        catalog = fetch_itunes_artist_catalog(artist, limit=65, sleep_sec=0.35)
         added_for_artist = 0
         for item in catalog:
             key = make_normalized_key(item["artist"], item["title"])
