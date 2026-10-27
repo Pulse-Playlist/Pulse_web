@@ -1,0 +1,4 @@
+# TempoCNN weights are downloaded by setup_envs.sh; virtualenvs are already ignored by the root .gitignore
+models/
+.venv/
+__pycache__/

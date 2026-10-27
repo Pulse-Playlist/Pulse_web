@@ -386,6 +386,17 @@ def sync_to_supabase(songs: List[Dict[str, Any]]) -> None:
     if not supabase_key.startswith("sb_"):
         headers["Authorization"] = f"Bearer {supabase_key}"
 
+    # BPM resolver columns (crawler/tempo_ml/README.md) are sent only when they exist in the table,
+    # so a full re-sync does not wipe bpm_alt / bpm_confidence / bpm_source (and does not fail if the columns are missing).
+    bpm_extra_cols = {"bpm_alt", "bpm_confidence", "bpm_source"}
+    probe_headers = {k: v for k, v in headers.items() if k in ("apikey", "Authorization")}
+    probe = requests.get(
+        f"{supabase_url}/rest/v1/songs?select={','.join(sorted(bpm_extra_cols))}&limit=1",
+        headers=probe_headers,
+        timeout=30,
+    )
+    allowed_columns = ALLOWED_SUPABASE_COLUMNS | (bpm_extra_cols if probe.status_code == 200 else set())
+
     del_res = requests.delete(
         f"{supabase_url}/rest/v1/songs?id=not.is.null",
         headers={"apikey": supabase_key},
@@ -403,7 +414,7 @@ def sync_to_supabase(songs: List[Dict[str, Any]]) -> None:
         raw_batch = songs[idx : idx + batch_size]
         batch = []
         for s in raw_batch:
-            item = {k: v for k, v in s.items() if k in ALLOWED_SUPABASE_COLUMNS}
+            item = {k: v for k, v in s.items() if k in allowed_columns}
             if not item.get("cadence_mode"):
                 item["cadence_mode"] = "native"
             # Pack rich 7-genre + bilingual + popularity metadata into `source` JSON so Supabase is 100% self-contained

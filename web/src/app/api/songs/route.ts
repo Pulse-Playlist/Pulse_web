@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
       if (s.genre_tag && category_counts[s.genre_tag] !== undefined) {
         category_counts[s.genre_tag]++;
       }
-      const bpm = s.running_bpm || s.raw_bpm || 0;
+      const bpm = s.raw_bpm || s.running_bpm || 0;
       if (bpm > 0) {
         bpmSum += bpm;
         if (bpm < bpmMin) bpmMin = bpm;
@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
       const minBpm = cadence - tol;
       const maxBpm = cadence + tol;
       filtered = filtered.filter((s) => {
-        const bpm = s.running_bpm || s.raw_bpm;
+        const bpm = s.raw_bpm || s.running_bpm;
         return bpm >= minBpm && bpm <= maxBpm;
       });
     }

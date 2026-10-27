@@ -6,6 +6,7 @@ Upserts all deduplicated, DSP-audited songs into Supabase public.songs table.
 import json
 import os
 from pathlib import Path
+import sys
 import time
 from typing import Any, Dict, List
 
@@ -43,6 +44,12 @@ ALLOWED_SUPABASE_COLUMNS = {
 
 
 def main() -> None:
+    # DANGER: this script DELETES every row of public.songs before re-inserting, and it does not support the 7-genre
+    # schema / packed `source` metadata (use sync_to_supabase in unify_artists_and_dedup.py for that). To change only BPM
+    # values use crawler/tempo_ml/apply_bpm.py, which PATCHes the BPM columns and never deletes anything.
+    if "--i-know-this-wipes-the-table" not in sys.argv:
+        print("[ABORT] upsert_all_songs.py wipes public.songs first. Pass --i-know-this-wipes-the-table to run it anyway.")
+        return
     load_dotenv(BASE_DIR / ".env")
     supabase_url = (os.getenv("SUPABASE_URL") or "").rstrip("/")
     supabase_key = (

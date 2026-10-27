@@ -5,13 +5,14 @@ import { getSongArtistMatchTier } from './artistClusters';
  * Returns the true musical BPM of a song (`Math.round(raw_bpm)`).
  * Does NOT artificially double slow 80 BPM songs to 160 BPM or halve fast songs,
  * ensuring the song's actual perceived tempo matches the user's selected BPM.
+ * Returns 0 when the song has no BPM at all (such songs never match a target BPM).
  */
 export function getSongBpm(song: Song): number {
   const rawBpm = song.raw_bpm && !isNaN(song.raw_bpm) ? Math.round(song.raw_bpm) : 0;
   if (rawBpm > 0) return rawBpm;
   const runBpm = song.running_bpm && !isNaN(song.running_bpm) ? Math.round(song.running_bpm) : 0;
   if (runBpm > 0) return runBpm;
-  return 160;
+  return 0;
 }
 
 /**
@@ -19,6 +20,7 @@ export function getSongBpm(song: Song): number {
  */
 export function isSongWithinTargetBpm(song: Song, targetBpm: number, tolerance = 2): boolean {
   const actualBpm = getSongBpm(song);
+  if (actualBpm <= 0) return false;
   return Math.abs(actualBpm - targetBpm) <= tolerance;
 }
 

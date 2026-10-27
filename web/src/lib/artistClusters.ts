@@ -369,7 +369,7 @@ export function buildArtistCatalog(allSongs: Song[], targetBpm?: number): Map<st
     }
 
     node.trackCount += 1;
-    const bpm = s.running_bpm || s.raw_bpm || 0;
+    const bpm = s.raw_bpm || s.running_bpm || 0;
     if (targetBpm) {
       if (Math.abs(bpm - targetBpm) <= 2) {
         node.bpm130_180Count += 1;

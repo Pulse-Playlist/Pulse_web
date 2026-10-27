@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -22,6 +23,7 @@ DATA_DIR = BASE_DIR / "data"
 SONGS_JSON_PATH = DATA_DIR / "songs.json"
 WEB_SONGS_JSON_PATH = BASE_DIR.parent / "web" / "public" / "data" / "songs.json"
 WEB_PLAYLISTS_JSON_PATH = BASE_DIR.parent / "web" / "public" / "data" / "playlists.json"
+TEMPO_ML_DIR = BASE_DIR / "tempo_ml"
 
 
 def deduplicate_tracks(songs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -161,6 +163,18 @@ def process_single_track(idx: int, track: Dict[str, Any]) -> Tuple[int, Dict[str
 
 
 def main() -> None:
+    if "--legacy-dsp" not in sys.argv and (TEMPO_ML_DIR / ".venv" / "res" / "bin" / "python").exists():
+        print("=== [PULSE] Delegating to ML Tempo Pipeline (Beat This! + TempoCNN + Octave Resolver) ===")
+        print("Pass --legacy-dsp to run legacy librosa DSP recalculation instead.")
+        subprocess.run(["bash", str(TEMPO_ML_DIR / "run_extraction.sh")], cwd=TEMPO_ML_DIR, check=True)
+        res_py = str(TEMPO_ML_DIR / ".venv" / "res" / "bin" / "python")
+        subprocess.run([res_py, str(TEMPO_ML_DIR / "octave_resolver.py"), "predict"], cwd=TEMPO_ML_DIR, check=True)
+        apply_args = [res_py, str(TEMPO_ML_DIR / "apply_bpm.py")]
+        if "--write" in sys.argv:
+            apply_args.append("--write")
+        subprocess.run(apply_args, cwd=TEMPO_ML_DIR, check=True)
+        return
+
     if not SONGS_JSON_PATH.exists():
         print(f"[ERROR] {SONGS_JSON_PATH} not found!")
         sys.exit(1)

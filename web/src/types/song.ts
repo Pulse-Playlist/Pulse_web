@@ -16,8 +16,14 @@ export interface Song {
   genre_tag: GenreTag;
   raw_bpm: number;
   running_bpm: number;
-  cadence_mode: 'native' | 'doubled' | 'halved' | string;
+  cadence_mode: 'native' | 'double_time' | 'half_time' | string;
   deezer_bpm: number | null;
+  /** Octave-related alternative tempo (x2 or x0.5 of raw_bpm) when the tempo is ambiguous, otherwise null. */
+  bpm_alt?: number | null;
+  /** Probability (0~1) the tempo resolver assigns to raw_bpm. */
+  bpm_confidence?: number | null;
+  /** Which pipeline produced raw_bpm (e.g. 'ens_v1'). */
+  bpm_source?: string | null;
   beat_clarity: number;
   beat_salience: number;
   timing_stability: number;
