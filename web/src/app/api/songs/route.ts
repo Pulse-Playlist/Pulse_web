@@ -82,6 +82,8 @@ async function loadSongs(): Promise<Song[]> {
             return {
               ...row,
               genre_tag: local.genre_tag || row.genre_tag,
+              popularity_score: local.popularity_score ?? row.popularity_score ?? row.running_score,
+              artist_track_rank: local.artist_track_rank ?? row.artist_track_rank,
               title_ko: row.title_ko || local.title_ko || row.title,
               title_en: row.title_en || local.title_en || row.title,
               artist_ko: row.artist_ko || local.artist_ko || row.artist,

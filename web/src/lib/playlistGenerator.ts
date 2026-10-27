@@ -23,6 +23,44 @@ export function isSongWithinTargetBpm(song: Song, targetBpm: number, tolerance =
 }
 
 /**
+ * Returns the song's composite popularity score (0 ~ 100).
+ * Combines Apple Music KR/Global streaming popularity, chart presence, and artist tier.
+ */
+export function getSongPopularityScore(song: Song): number {
+  if (typeof song.popularity_score === 'number' && !isNaN(song.popularity_score)) {
+    return song.popularity_score;
+  }
+  if (typeof song.running_score === 'number' && !isNaN(song.running_score)) {
+    return song.running_score;
+  }
+  return 75;
+}
+
+/**
+ * Popularity-Weighted Random Sampling (Efraimidis-Spirakis algorithm).
+ * Strongly prioritizes high-popularity hit songs (top chart & artist signature tracks #1~#10)
+ * while preserving natural variety when reshuffling.
+ */
+export function weightedShuffleByPopularity(songs: Song[]): Song[] {
+  if (songs.length <= 1) return [...songs];
+
+  const scored = songs.map((song) => {
+    const pop = Math.max(20, Math.min(100, getSongPopularityScore(song)));
+    const rank = song.artist_track_rank ?? 25;
+    // Exponential weight favoring popular hit tracks (pop >= 85 and rank <= 10)
+    const rankBoost = rank <= 3 ? 2.6 : rank <= 8 ? 1.9 : rank <= 15 ? 1.35 : 1.0;
+    const weight = Math.pow(pop / 40, 4.5) * rankBoost;
+    // Efraimidis-Spirakis key: u^(1/w) -> higher weight = key closer to 1.0
+    const u = Math.max(1e-9, Math.random());
+    const key = Math.pow(u, 1.0 / weight);
+    return { song, key };
+  });
+
+  scored.sort((a, b) => b.key - a.key);
+  return scored.map((item) => item.song);
+}
+
+/**
  * Truly random Fisher-Yates shuffle.
  */
 export function shuffleArray<T>(array: T[]): T[] {
@@ -106,12 +144,12 @@ export function generatePlaylist(
       }
 
       orderedPool = [
-        ...shuffleArray(tier1),
-        ...shuffleArray(tier2),
-        ...shuffleArray(tier3),
+        ...weightedShuffleByPopularity(tier1),
+        ...weightedShuffleByPopularity(tier2),
+        ...weightedShuffleByPopularity(tier3),
       ];
     } else {
-      orderedPool = shuffleArray(matchingCategorySongs);
+      orderedPool = weightedShuffleByPopularity(matchingCategorySongs);
     }
 
     let countForCat = 0;
@@ -131,7 +169,8 @@ export function generatePlaylist(
     }
   }
 
-  // If preferredArtists are active, keep preferred & related tracks near the top of the playlist
+  // If preferredArtists are active, keep preferred & related tracks near the top of the playlist,
+  // ordered with popularity-weighted priority
   if (preferredArtists && preferredArtists.length > 0) {
     const topPreferred: Song[] = [];
     const topRelated: Song[] = [];
@@ -145,18 +184,19 @@ export function generatePlaylist(
     }
 
     return [
-      ...shuffleArray(topPreferred),
-      ...shuffleArray(topRelated),
-      ...shuffleArray(rest),
+      ...weightedShuffleByPopularity(topPreferred),
+      ...weightedShuffleByPopularity(topRelated),
+      ...weightedShuffleByPopularity(rest),
     ];
   }
 
-  return shuffleArray(pickedSongs);
+  return weightedShuffleByPopularity(pickedSongs);
 }
 
 /**
  * Gets recommended songs from the selected categories strictly within `targetBpm ± 2`,
- * excluding songs currently in the playlist, and prioritizing preferred/related artists first.
+ * excluding songs currently in the playlist, and prioritizing preferred/related artists
+ * and high-popularity tracks first.
  */
 export function getRecommendedSongs(
   allSongs: Song[],
@@ -193,11 +233,11 @@ export function getRecommendedSongs(
     }
 
     return [
-      ...shuffleArray(tier1),
-      ...shuffleArray(tier2),
-      ...shuffleArray(tier3),
+      ...weightedShuffleByPopularity(tier1),
+      ...weightedShuffleByPopularity(tier2),
+      ...weightedShuffleByPopularity(tier3),
     ].slice(0, limit);
   }
 
-  return shuffleArray(eligible).slice(0, limit);
+  return weightedShuffleByPopularity(eligible).slice(0, limit);
 }
