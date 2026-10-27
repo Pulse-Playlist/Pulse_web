@@ -15,6 +15,8 @@ interface HomeScreenProps {
   lang: AppLanguage;
   onToggleLang: () => void;
   onStart: () => void;
+  onOpenArtistSelect?: () => void;
+  preferredArtistsCount?: number;
   onSelectPlaylist: (playlist: SavedPlaylist) => void;
   communityPlaylists?: SavedPlaylist[];
   onLikePlaylist?: (id: string) => void;
@@ -60,6 +62,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   lang,
   onToggleLang,
   onStart,
+  onOpenArtistSelect,
+  preferredArtistsCount = 0,
   onSelectPlaylist,
   communityPlaylists = [],
   onLikePlaylist,
@@ -200,6 +204,36 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <span>{lang === 'ko' ? '플레이리스트 만들기' : 'Create Playlist'}</span>
               <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
             </motion.button>
+
+            {/* Quick Spotify-Style Artist Bubble Taste Button */}
+            {onOpenArtistSelect && (
+              <motion.button
+                type="button"
+                onClick={() => {
+                  playPopSound(true);
+                  onOpenArtistSelect();
+                }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.97 }}
+                className="w-full py-2.5 px-4 rounded-2xl bg-black/85 dark:bg-zinc-800/90 hover:bg-black text-white dark:text-zinc-100 font-bold text-xs border border-zinc-300/20 dark:border-zinc-700 flex items-center justify-between cursor-pointer shadow-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-[#C4FF00]" />
+                  <span>
+                    {lang === 'ko'
+                      ? '🫧 내 최애 아티스트 취향 버블 고르기'
+                      : '🫧 Pick Favorite Artist Bubbles'}
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-[#C4FF00]/20 text-[#C4FF00] text-[10px] font-black">
+                  {preferredArtistsCount > 0
+                    ? lang === 'ko'
+                      ? `${preferredArtistsCount}팀 선택됨`
+                      : `${preferredArtistsCount} picked`
+                    : 'NEW'}
+                </span>
+              </motion.button>
+            )}
           </div>
         </section>
 

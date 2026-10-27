@@ -1,4 +1,5 @@
 import { GenreTag, Song } from '@/types/song';
+import { getSongArtistMatchTier } from './artistClusters';
 
 /**
  * Returns the true musical BPM of a song (`Math.round(raw_bpm)`).
@@ -66,15 +67,17 @@ export function getBpmZoneLabel(bpm: number): { label: string; color: string } {
  *   - 2 categories: up to 15 + 15 tracks
  *   - 3 categories: up to 10 + 10 + 10 tracks
  * - ONLY includes songs where `|BPM - targetBpm| <= 2`.
- * - If a category has fewer than the max quota (e.g., fewer than 30, 15, or 10 tracks within ±2 BPM),
- *   ONLY those matching tracks are included (never pads with mismatched BPMs).
+ * - When `preferredArtists` are provided:
+ *   - Prioritizes Tier 1 (user's selected favorite artists), then Tier 2 (related artists in similarity cluster),
+ *     then Tier 3 (other tracks in the selected genres) within `targetBpm ± 2`.
  * - Normalizes each returned song's `running_bpm` to its matched BPM in `[targetBpm - 2, targetBpm + 2]`
  *   so every badge displays the exact matched BPM.
  */
 export function generatePlaylist(
   allSongs: Song[],
   targetBpm: number,
-  selectedCategories: GenreTag[]
+  selectedCategories: GenreTag[],
+  preferredArtists: string[] = []
 ): Song[] {
   if (!allSongs.length || !selectedCategories.length) {
     return [];
@@ -89,10 +92,31 @@ export function generatePlaylist(
       (s) => s.genre_tag === cat && isSongWithinTargetBpm(s, targetBpm, 2)
     );
 
-    const shuffled = shuffleArray(matchingCategorySongs);
+    let orderedPool: Song[];
+    if (preferredArtists && preferredArtists.length > 0) {
+      const tier1: Song[] = [];
+      const tier2: Song[] = [];
+      const tier3: Song[] = [];
+
+      for (const s of matchingCategorySongs) {
+        const tier = getSongArtistMatchTier(s, preferredArtists);
+        if (tier === 'selected') tier1.push(s);
+        else if (tier === 'related') tier2.push(s);
+        else tier3.push(s);
+      }
+
+      orderedPool = [
+        ...shuffleArray(tier1),
+        ...shuffleArray(tier2),
+        ...shuffleArray(tier3),
+      ];
+    } else {
+      orderedPool = shuffleArray(matchingCategorySongs);
+    }
+
     let countForCat = 0;
 
-    for (const s of shuffled) {
+    for (const s of orderedPool) {
       if (countForCat >= categoryQuota) break;
       const key = s.normalized_key || s.title + s.artist;
       if (pickedKeys.has(key)) continue;
@@ -107,19 +131,40 @@ export function generatePlaylist(
     }
   }
 
+  // If preferredArtists are active, keep preferred & related tracks near the top of the playlist
+  if (preferredArtists && preferredArtists.length > 0) {
+    const topPreferred: Song[] = [];
+    const topRelated: Song[] = [];
+    const rest: Song[] = [];
+
+    for (const s of pickedSongs) {
+      const tier = getSongArtistMatchTier(s, preferredArtists);
+      if (tier === 'selected') topPreferred.push(s);
+      else if (tier === 'related') topRelated.push(s);
+      else rest.push(s);
+    }
+
+    return [
+      ...shuffleArray(topPreferred),
+      ...shuffleArray(topRelated),
+      ...shuffleArray(rest),
+    ];
+  }
+
   return shuffleArray(pickedSongs);
 }
 
 /**
  * Gets recommended songs from the selected categories strictly within `targetBpm ± 2`,
- * excluding songs currently in the playlist.
+ * excluding songs currently in the playlist, and prioritizing preferred/related artists first.
  */
 export function getRecommendedSongs(
   allSongs: Song[],
   targetBpm: number,
   selectedCategories: GenreTag[],
   playlistSongs: Song[],
-  limit = 10
+  limit = 10,
+  preferredArtists: string[] = []
 ): Song[] {
   const playlistKeySet = new Set(playlistSongs.map((s) => s.normalized_key || s.title + s.artist));
 
@@ -134,6 +179,25 @@ export function getRecommendedSongs(
       ...s,
       running_bpm: getSongBpm(s),
     }));
+
+  if (preferredArtists && preferredArtists.length > 0) {
+    const tier1: Song[] = [];
+    const tier2: Song[] = [];
+    const tier3: Song[] = [];
+
+    for (const s of eligible) {
+      const tier = getSongArtistMatchTier(s, preferredArtists);
+      if (tier === 'selected') tier1.push(s);
+      else if (tier === 'related') tier2.push(s);
+      else tier3.push(s);
+    }
+
+    return [
+      ...shuffleArray(tier1),
+      ...shuffleArray(tier2),
+      ...shuffleArray(tier3),
+    ].slice(0, limit);
+  }
 
   return shuffleArray(eligible).slice(0, limit);
 }

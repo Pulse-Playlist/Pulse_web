@@ -8,11 +8,12 @@ import { HomeScreen } from '@/components/HomeScreen';
 import { BpmScreen } from '@/components/BpmScreen';
 import { TapTempoScreen } from '@/components/TapTempoScreen';
 import { CategoryScreen } from '@/components/CategoryScreen';
+import { ArtistSelectScreen } from '@/components/ArtistSelectScreen';
 import { PlaylistScreen } from '@/components/PlaylistScreen';
 import { MiniPlayerDock } from '@/components/MiniPlayerDock';
 import { Toast, ToastMessage } from '@/components/Toast';
 
-type Step = 'home' | 'bpm' | 'tap' | 'category' | 'playlist';
+type Step = 'home' | 'bpm' | 'tap' | 'category' | 'artists' | 'playlist';
 
 export default function Page() {
   // Navigation & Step state
@@ -28,6 +29,7 @@ export default function Page() {
   // User input settings
   const [targetBpm, setTargetBpm] = useState<number>(160);
   const [selectedCategories, setSelectedCategories] = useState<GenreTag[]>(['hiphop', 'rock', 'band']);
+  const [preferredArtists, setPreferredArtists] = useState<string[]>([]);
 
   // Playlist & Recommendation state
   const [playlist, setPlaylist] = useState<Song[]>([]);
@@ -107,8 +109,38 @@ export default function Page() {
       if (storedLang === 'en' || storedLang === 'ko') {
         setLang(storedLang);
       }
+      const storedArtists = localStorage.getItem('pulse_preferred_artists');
+      if (storedArtists) {
+        const parsed = JSON.parse(storedArtists);
+        if (Array.isArray(parsed)) {
+          setPreferredArtists(parsed.filter((x) => typeof x === 'string'));
+        }
+      }
     } catch {
       // Ignore localStorage errors
+    }
+  }, []);
+
+  const handleToggleArtist = useCallback((artistName: string) => {
+    setPreferredArtists((prev) => {
+      const next = prev.includes(artistName)
+        ? prev.filter((a) => a !== artistName)
+        : [...prev, artistName];
+      try {
+        localStorage.setItem('pulse_preferred_artists', JSON.stringify(next));
+      } catch {
+        // Ignore
+      }
+      return next;
+    });
+  }, []);
+
+  const handleClearArtists = useCallback(() => {
+    setPreferredArtists([]);
+    try {
+      localStorage.removeItem('pulse_preferred_artists');
+    } catch {
+      // Ignore
     }
   }, []);
 
@@ -497,8 +529,8 @@ export default function Page() {
       return;
     }
 
-    const newPlaylist = generatePlaylist(allSongs, targetBpm, selectedCategories);
-    const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, newPlaylist, 8);
+    const newPlaylist = generatePlaylist(allSongs, targetBpm, selectedCategories, preferredArtists);
+    const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, newPlaylist, 8, preferredArtists);
 
     setPlaylist(newPlaylist);
     setRecommendedSongs(recs);
@@ -507,7 +539,11 @@ export default function Page() {
     );
     setStep('playlist');
     showToast(
-      lang === 'ko'
+      preferredArtists.length > 0
+        ? lang === 'ko'
+          ? `최애 아티스트 ${preferredArtists.length}팀 취향이 반영된 ${targetBpm} BPM ${newPlaylist.length}곡 완성!`
+          : `Generated ${newPlaylist.length} tracks at ${targetBpm} BPM with your favorite artists!`
+        : lang === 'ko'
         ? `${targetBpm} BPM ${newPlaylist.length}곡 플레이리스트가 완성되었어요!`
         : `Generated ${newPlaylist.length} tracks at ${targetBpm} BPM!`,
       'success'
@@ -516,8 +552,8 @@ export default function Page() {
 
   // Re-shuffle playlist handler
   const handleReshuffle = () => {
-    const newPlaylist = generatePlaylist(allSongs, targetBpm, selectedCategories);
-    const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, newPlaylist, 10);
+    const newPlaylist = generatePlaylist(allSongs, targetBpm, selectedCategories, preferredArtists);
+    const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, newPlaylist, 10, preferredArtists);
     setPlaylist(newPlaylist);
     setRecommendedSongs(recs);
     showToast(
@@ -530,7 +566,7 @@ export default function Page() {
 
   // Refresh recommendations handler
   const handleRefreshRecommendations = () => {
-    const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, playlist, 10);
+    const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, playlist, 10, preferredArtists);
     setRecommendedSongs(recs);
     showToast(
       lang === 'ko' ? '추천곡 목록을 새로고침했어요' : 'Refreshed recommended tracks',
@@ -546,7 +582,7 @@ export default function Page() {
     }
     const updated = playlist.filter((s) => (s.normalized_key || s.title + s.artist) !== songKey);
     setPlaylist(updated);
-    setRecommendedSongs(getRecommendedSongs(allSongs, targetBpm, selectedCategories, updated, 10));
+    setRecommendedSongs(getRecommendedSongs(allSongs, targetBpm, selectedCategories, updated, 10, preferredArtists));
     showToast(
       lang === 'ko' ? '곡이 목록에서 삭제되었어요' : 'Track removed from playlist',
       'info'
@@ -602,10 +638,12 @@ export default function Page() {
                 lang={lang}
                 onToggleLang={handleToggleLang}
                 onStart={() => setStep('bpm')}
+                onOpenArtistSelect={() => setStep('artists')}
+                preferredArtistsCount={preferredArtists.length}
                 onSelectPlaylist={handleSelectCommunityPlaylist}
                 communityPlaylists={communityPlaylists}
                 onLikePlaylist={handleLikePlaylist}
-                totalSongsCount={allSongs.length || 1320}
+                totalSongsCount={allSongs.length || 14707}
               />
             )}
 
@@ -640,10 +678,29 @@ export default function Page() {
                 selectedCategories={selectedCategories}
                 onToggleCategory={handleToggleCategory}
                 onNext={handleGeneratePlaylist}
+                onOpenArtistSelect={() => setStep('artists')}
+                preferredArtists={preferredArtists}
                 onBack={() => setStep('bpm')}
                 isDark={isDark}
                 onToggleTheme={handleToggleTheme}
                 showToast={showToast}
+                lang={lang}
+                onToggleLang={handleToggleLang}
+              />
+            )}
+
+            {step === 'artists' && (
+              <ArtistSelectScreen
+                allSongs={allSongs}
+                targetBpm={targetBpm}
+                selectedCategories={selectedCategories}
+                preferredArtists={preferredArtists}
+                onToggleArtist={handleToggleArtist}
+                onClearArtists={handleClearArtists}
+                onNext={handleGeneratePlaylist}
+                onBack={() => setStep('category')}
+                isDark={isDark}
+                onToggleTheme={handleToggleTheme}
                 lang={lang}
                 onToggleLang={handleToggleLang}
               />
@@ -672,6 +729,8 @@ export default function Page() {
                 onToggleLang={handleToggleLang}
                 initialPlaylistName={customPlaylistName}
                 onSavedToFeed={handleSavedToFeed}
+                preferredArtists={preferredArtists}
+                onOpenArtistSelect={() => setStep('artists')}
               />
             )}
           </motion.div>
