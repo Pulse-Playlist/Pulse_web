@@ -60,7 +60,7 @@ async function loadSongs(): Promise<Song[]> {
         headers.Authorization = `Bearer ${supabaseKey}`;
       }
 
-      const pageOffsets = Array.from({ length: 16 }, (_, i) => i * 1000);
+      const pageOffsets = Array.from({ length: 25 }, (_, i) => i * 1000);
       const responses = await Promise.all(
         pageOffsets.map((offset) =>
           fetch(`${supabaseUrl}/rest/v1/songs?select=*&order=id.asc&offset=${offset}&limit=1000`, {
@@ -81,6 +81,7 @@ async function loadSongs(): Promise<Song[]> {
             if (!local) return row;
             return {
               ...row,
+              genre_tag: local.genre_tag || row.genre_tag,
               title_ko: row.title_ko || local.title_ko || row.title,
               title_en: row.title_en || local.title_en || row.title,
               artist_ko: row.artist_ko || local.artist_ko || row.artist,
@@ -114,6 +115,9 @@ export async function GET(request: NextRequest) {
       kpop: 0,
       rock: 0,
       hiphop: 0,
+      edm: 0,
+      pop: 0,
+      jpop: 0,
     };
 
     let bpmSum = 0;

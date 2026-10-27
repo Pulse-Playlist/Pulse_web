@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   Check,
   Search,
-  Sparkles,
   ArrowRight,
   X,
   Music,
@@ -31,7 +30,15 @@ interface ArtistSelectScreenProps {
   preferredArtists: string[];
   onToggleArtist: (artistName: string) => void;
   onClearArtists: () => void;
-  onNext: () => void;
+  /**
+   * 'onboarding': first-visit flow. No back button; user can skip.
+   * 'edit': revisited later from Home / Playlist to modify the saved taste.
+   */
+  mode: 'onboarding' | 'edit';
+  /** Called when the user confirms (saves) their selection. */
+  onDone: () => void;
+  /** Called when the user skips onboarding without choosing anyone. */
+  onSkip: () => void;
   onBack: () => void;
   isDark: boolean;
   onToggleTheme: () => void;
@@ -48,7 +55,9 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
   preferredArtists,
   onToggleArtist,
   onClearArtists,
-  onNext,
+  mode,
+  onDone,
+  onSkip,
   onBack,
   isDark,
   onToggleTheme,
@@ -61,7 +70,7 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
   const [gridArtistNames, setGridArtistNames] = useState<string[]>([]);
   // Track which artists were dynamically inserted into the grid by clicking a parent artist
   const [spawnedByMap, setSpawnedByMap] = useState<Record<string, string>>({});
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const brandLogo = isDark ? '/logos/logo-dark.png' : '/logos/logo-green.png';
 
@@ -85,9 +94,9 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
       activeTab === 'recommended'
         ? selectedCategories.length > 0
           ? selectedCategories
-          : ['band', 'kpop', 'rock', 'hiphop']
+          : ['band', 'kpop', 'rock', 'hiphop', 'edm', 'pop', 'jpop']
         : activeTab === 'all'
-        ? ['band', 'kpop', 'rock', 'hiphop']
+        ? ['band', 'kpop', 'rock', 'hiphop', 'edm', 'pop', 'jpop']
         : [activeTab];
 
     const initialNames: string[] = [];
@@ -197,7 +206,13 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
   }, [catalog, searchQuery, gridArtistNames]);
 
   const handleConfirm = () => {
-    setIsGenerating(true);
+    // Nothing picked during onboarding → same as skipping
+    if (mode === 'onboarding' && preferredArtists.length === 0) {
+      onSkip();
+      return;
+    }
+
+    setIsSaving(true);
     playSuccessFanfare();
 
     try {
@@ -213,8 +228,8 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
     }
 
     setTimeout(() => {
-      onNext();
-      setIsGenerating(false);
+      onDone();
+      setIsSaving(false);
     }, 200);
   };
 
@@ -222,14 +237,18 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
     <div className="flex flex-col min-h-dvh justify-between select-none relative overflow-hidden pb-36">
       {/* Sticky Top Header */}
       <header className="sticky top-0 z-30 flex items-center justify-between px-5 py-3 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label={lang === 'ko' ? '이전' : 'Back'}
-          className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
+        {mode === 'edit' ? (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label={lang === 'ko' ? '이전' : 'Back'}
+            className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+        ) : (
+          <div className="w-6 h-6 p-2 -ml-2" aria-hidden />
+        )}
 
         <div className="flex items-center gap-2">
           <div className="relative w-7 h-7 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm">
@@ -283,7 +302,11 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
             {lang === 'ko' ? '좋아하는 아티스트를 선택하세요' : 'Choose artists you like'}
           </h2>
           <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mt-0.5">
-            {lang === 'ko'
+            {mode === 'onboarding'
+              ? lang === 'ko'
+                ? '플레이리스트에 취향이 반영돼요. 나중에 언제든 바꿀 수 있어요'
+                : 'Your picks shape your playlists. You can change them anytime'
+              : lang === 'ko'
               ? '아티스트를 고르면 비슷한 무드의 아티스트가 바로 옆에 추가됩니다'
               : 'Tap an artist to reveal similar artists right next to it'}
           </p>
@@ -321,6 +344,9 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
               { id: 'kpop', ko: '케이팝', en: 'K-Pop' },
               { id: 'rock', ko: '락', en: 'Rock' },
               { id: 'hiphop', ko: '힙합', en: 'Hip-Hop' },
+              { id: 'edm', ko: '이디엠', en: 'EDM' },
+              { id: 'pop', ko: '팝', en: 'Pop' },
+              { id: 'jpop', ko: '제이팝', en: 'J-Pop' },
               { id: 'all', ko: '전체', en: 'All' },
             ] as { id: FilterTab; ko: string; en: string }[]
           ).map((tab) => {
@@ -489,32 +515,32 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
         {/* Primary Action Button */}
         <motion.button
           type="button"
-          disabled={isGenerating}
+          disabled={isSaving}
           onClick={handleConfirm}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.96 }}
           className="w-full py-3.5 px-5 rounded-full bg-[#C4FF00] hover:bg-[#B8F500] text-black font-black text-sm shadow-lg shadow-[#C4FF00]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
-          {isGenerating ? (
+          {isSaving ? (
             <div className="flex items-center gap-2">
               <span className="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin" />
-              <span>
-                {lang === 'ko'
-                  ? '취향 맞춤 30곡 플레이리스트 생성 중...'
-                  : 'Building Custom 30-Track Mix...'}
-              </span>
+              <span>{lang === 'ko' ? '저장 중...' : 'Saving...'}</span>
             </div>
           ) : (
             <>
-              <Sparkles className="w-4 h-4" />
+              <Check className="w-4 h-4 stroke-[3]" />
               <span>
                 {preferredArtists.length > 0
                   ? lang === 'ko'
-                    ? '완료 · 30곡 플레이리스트 만들기'
-                    : 'Done · Create 30-Track Mix'
+                    ? '선택 완료'
+                    : 'Done'
+                  : mode === 'onboarding'
+                  ? lang === 'ko'
+                    ? '나중에 할게요'
+                    : "I'll do this later"
                   : lang === 'ko'
-                  ? '건너뛰고 30곡 만들기'
-                  : 'Skip & Create 30 Tracks'}
+                  ? '완료'
+                  : 'Done'}
               </span>
               <ArrowRight className="w-4 h-4" />
             </>

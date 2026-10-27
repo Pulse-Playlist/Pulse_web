@@ -15,9 +15,23 @@ import { Toast, ToastMessage } from '@/components/Toast';
 
 type Step = 'home' | 'bpm' | 'tap' | 'category' | 'artists' | 'playlist';
 
+// Set once the user has finished (or skipped) the first-visit artist onboarding
+const ARTIST_ONBOARDED_KEY = 'pulse_artists_onboarded';
+
+// Artist taste is independent of the current playlist's genres, so show artists from every genre
+// (stable reference so ArtistSelectScreen's effect doesn't re-run every render)
+const NO_GENRE_FILTER: GenreTag[] = [];
+
 export default function Page() {
   // Navigation & Step state
   const [step, setStep] = useState<Step>('home');
+  // Artist taste is independent of playlist creation:
+  // 'onboarding' = shown once on first visit, 'edit' = reopened later from Home / Playlist
+  const [artistMode, setArtistMode] = useState<'onboarding' | 'edit'>('edit');
+  // Where to return to after editing artists in 'edit' mode
+  const [artistReturnStep, setArtistReturnStep] = useState<Step>('home');
+  // Avoid flashing the home screen before we know whether onboarding is needed
+  const [isReady, setIsReady] = useState(false);
 
   // Songs dataset state
   const [allSongs, setAllSongs] = useState<Song[]>([]);
@@ -109,17 +123,68 @@ export default function Page() {
       if (storedLang === 'en' || storedLang === 'ko') {
         setLang(storedLang);
       }
+      let hasStoredArtists = false;
       const storedArtists = localStorage.getItem('pulse_preferred_artists');
       if (storedArtists) {
         const parsed = JSON.parse(storedArtists);
         if (Array.isArray(parsed)) {
-          setPreferredArtists(parsed.filter((x) => typeof x === 'string'));
+          const artists = parsed.filter((x) => typeof x === 'string');
+          setPreferredArtists(artists);
+          hasStoredArtists = artists.length > 0;
         }
+      }
+
+      // First-visit onboarding: pick favorite artists once (skipped for shared links / returning users)
+      const params = new URLSearchParams(window.location.search);
+      const isSharedLink = params.has('bpm') || params.has('cats');
+      const onboarded = localStorage.getItem(ARTIST_ONBOARDED_KEY) === '1' || hasStoredArtists;
+      if (!onboarded && !isSharedLink) {
+        setArtistMode('onboarding');
+        setStep('artists');
       }
     } catch {
       // Ignore localStorage errors
     }
+    setIsReady(true);
   }, []);
+
+  const markArtistsOnboarded = useCallback(() => {
+    try {
+      localStorage.setItem(ARTIST_ONBOARDED_KEY, '1');
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  // Open artist taste editor from Home / Playlist; returns to where the user came from
+  const handleOpenArtistEdit = useCallback((from: Step) => {
+    setArtistMode('edit');
+    setArtistReturnStep(from);
+    setStep('artists');
+  }, []);
+
+  // Artist selection confirmed (onboarding or edit) — does NOT generate a playlist
+  const handleArtistsDone = () => {
+    markArtistsOnboarded();
+    const wasOnboarding = artistMode === 'onboarding';
+    setStep(wasOnboarding ? 'home' : artistReturnStep);
+    showToast(
+      preferredArtists.length > 0
+        ? lang === 'ko'
+          ? `최애 아티스트 ${preferredArtists.length}팀이 저장됐어요. 다음 플레이리스트부터 반영돼요!`
+          : `Saved ${preferredArtists.length} favorite artists. They'll shape your playlists!`
+        : lang === 'ko'
+        ? '아티스트 취향이 초기화됐어요'
+        : 'Artist preferences cleared',
+      'success'
+    );
+  };
+
+  // Onboarding skipped without choosing anyone
+  const handleArtistsSkip = () => {
+    markArtistsOnboarded();
+    setStep('home');
+  };
 
   const handleToggleArtist = useCallback((artistName: string) => {
     setPreferredArtists((prev) => {
@@ -329,7 +394,7 @@ export default function Page() {
 
             let activeCats: GenreTag[] = ['hiphop', 'rock', 'band'];
             if (catsParam) {
-              const validCats: GenreTag[] = ['hiphop', 'rock', 'band', 'kpop'];
+              const validCats: GenreTag[] = ['hiphop', 'rock', 'band', 'kpop', 'edm', 'pop', 'jpop'];
               const parsed = catsParam
                 .split(',')
                 .map((c) => c.trim().toLowerCase() as GenreTag)
@@ -622,6 +687,7 @@ export default function Page() {
         <Toast toast={toast} onClose={() => setToast(null)} />
 
         {/* 4-Step Screen Routing with Smooth Spring Transitions */}
+        {isReady && (
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
@@ -638,7 +704,7 @@ export default function Page() {
                 lang={lang}
                 onToggleLang={handleToggleLang}
                 onStart={() => setStep('bpm')}
-                onOpenArtistSelect={() => setStep('artists')}
+                onOpenArtistSelect={() => handleOpenArtistEdit('home')}
                 preferredArtistsCount={preferredArtists.length}
                 onSelectPlaylist={handleSelectCommunityPlaylist}
                 communityPlaylists={communityPlaylists}
@@ -678,8 +744,6 @@ export default function Page() {
                 selectedCategories={selectedCategories}
                 onToggleCategory={handleToggleCategory}
                 onNext={handleGeneratePlaylist}
-                onOpenArtistSelect={() => setStep('artists')}
-                preferredArtists={preferredArtists}
                 onBack={() => setStep('bpm')}
                 isDark={isDark}
                 onToggleTheme={handleToggleTheme}
@@ -693,12 +757,14 @@ export default function Page() {
               <ArtistSelectScreen
                 allSongs={allSongs}
                 targetBpm={targetBpm}
-                selectedCategories={selectedCategories}
+                selectedCategories={NO_GENRE_FILTER}
                 preferredArtists={preferredArtists}
                 onToggleArtist={handleToggleArtist}
                 onClearArtists={handleClearArtists}
-                onNext={handleGeneratePlaylist}
-                onBack={() => setStep('category')}
+                mode={artistMode}
+                onDone={handleArtistsDone}
+                onSkip={handleArtistsSkip}
+                onBack={() => setStep(artistReturnStep)}
                 isDark={isDark}
                 onToggleTheme={handleToggleTheme}
                 lang={lang}
@@ -730,11 +796,12 @@ export default function Page() {
                 initialPlaylistName={customPlaylistName}
                 onSavedToFeed={handleSavedToFeed}
                 preferredArtists={preferredArtists}
-                onOpenArtistSelect={() => setStep('artists')}
+                onOpenArtistSelect={() => handleOpenArtistEdit('playlist')}
               />
             )}
           </motion.div>
         </AnimatePresence>
+        )}
 
         {/* Floating Mini Player Dock (visible on any screen when audio is active) */}
         {currentPlayingSong && (
