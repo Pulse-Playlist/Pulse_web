@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { Song, GenreTag, AppLanguage, SavedPlaylist, getSongTitle, getSongArtist } from '@/types/song';
 import { getPlaylistCoverUrl, getSongBpm, getBpmZoneLabel } from '@/lib/playlistGenerator';
+import { getSongArtistMatchTier } from '@/lib/artistClusters';
 import {
   getYouTubeMusicUrl,
   getSpotifyUrl,
@@ -57,6 +58,8 @@ interface PlaylistScreenProps {
   onToggleLang: () => void;
   initialPlaylistName?: string;
   onSavedToFeed?: (playlist: SavedPlaylist) => void;
+  preferredArtists?: string[];
+  onOpenArtistSelect?: () => void;
 }
 
 const CATEGORY_NAMES: Record<AppLanguage, Record<GenreTag, string>> = {
@@ -96,6 +99,8 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
   onToggleLang,
   initialPlaylistName,
   onSavedToFeed,
+  preferredArtists = [],
+  onOpenArtistSelect,
 }) => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isShuffling, setIsShuffling] = useState(false);
@@ -391,6 +396,21 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                     {CATEGORY_NAMES[lang][cat] || cat}
                   </span>
                 ))}
+                {onOpenArtistSelect && (
+                  <button
+                    type="button"
+                    onClick={onOpenArtistSelect}
+                    className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#C4FF00]/20 hover:bg-[#C4FF00]/30 border border-[#C4FF00]/50 text-lime-800 dark:text-[#C4FF00] cursor-pointer transition-colors"
+                  >
+                    {preferredArtists.length > 0
+                      ? lang === 'ko'
+                        ? `🫧 최애 ${preferredArtists.length}팀 반영됨`
+                        : `🫧 ${preferredArtists.length} Artists`
+                      : lang === 'ko'
+                      ? '🫧 아티스트 취향 설정'
+                      : '🫧 Pick Artists'}
+                  </button>
+                )}
               </div>
 
               <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
@@ -545,6 +565,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
 
                   const displayTitle = getSongTitle(song, lang);
                   const displayArtist = getSongArtist(song, lang);
+                  const artistTier = getSongArtistMatchTier(song, preferredArtists);
 
                   return (
                     <motion.div
@@ -654,6 +675,16 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                             </div>
 
                             <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                              {artistTier === 'selected' && (
+                                <span className="px-1.5 py-0.2 rounded bg-[#C4FF00] text-black text-[9px] font-black shrink-0">
+                                  {lang === 'ko' ? '★ 최애' : '★ Pick'}
+                                </span>
+                              )}
+                              {artistTier === 'related' && (
+                                <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30 text-[9px] font-black shrink-0">
+                                  {lang === 'ko' ? '🔗 연관' : '🔗 Vibe'}
+                                </span>
+                              )}
                               <span className="truncate">{displayArtist}</span>
                               <span>·</span>
                               <span className="shrink-0">
