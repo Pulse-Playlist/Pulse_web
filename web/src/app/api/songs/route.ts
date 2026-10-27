@@ -77,17 +77,32 @@ async function loadSongs(): Promise<Song[]> {
         const data = pages.flatMap((p) => (Array.isArray(p) ? p : []));
         if (data.length >= 100) {
           return (data as Song[]).map((row) => {
+            let meta: Record<string, unknown> = {};
+            if (typeof row.source === 'string' && row.source.startsWith('{')) {
+              try {
+                meta = JSON.parse(row.source);
+              } catch {
+                // ignore malformed JSON
+              }
+            }
             const local = row.normalized_key ? localByKey.get(row.normalized_key) : undefined;
-            if (!local) return row;
             return {
               ...row,
-              genre_tag: local.genre_tag || row.genre_tag,
-              popularity_score: local.popularity_score ?? row.popularity_score ?? row.running_score,
-              artist_track_rank: local.artist_track_rank ?? row.artist_track_rank,
-              title_ko: row.title_ko || local.title_ko || row.title,
-              title_en: row.title_en || local.title_en || row.title,
-              artist_ko: row.artist_ko || local.artist_ko || row.artist,
-              artist_en: row.artist_en || local.artist_en || row.artist,
+              source: (meta.src as string) || row.source,
+              genre_tag: ((meta.g as Song['genre_tag']) || local?.genre_tag || row.genre_tag),
+              popularity_score:
+                (typeof meta.pop === 'number' ? meta.pop : undefined) ??
+                local?.popularity_score ??
+                row.popularity_score ??
+                row.running_score,
+              artist_track_rank:
+                (typeof meta.rank === 'number' ? meta.rank : undefined) ??
+                local?.artist_track_rank ??
+                row.artist_track_rank,
+              title_ko: (meta.t_ko as string) || row.title_ko || local?.title_ko || row.title,
+              title_en: (meta.t_en as string) || row.title_en || local?.title_en || row.title,
+              artist_ko: (meta.a_ko as string) || row.artist_ko || local?.artist_ko || row.artist,
+              artist_en: (meta.a_en as string) || row.artist_en || local?.artist_en || row.artist,
             };
           });
         }

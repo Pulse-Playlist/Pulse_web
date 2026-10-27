@@ -406,6 +406,26 @@ def sync_to_supabase(songs: List[Dict[str, Any]]) -> None:
             item = {k: v for k, v in s.items() if k in ALLOWED_SUPABASE_COLUMNS}
             if not item.get("cadence_mode"):
                 item["cadence_mode"] = "native"
+            # Pack rich 7-genre + bilingual + popularity metadata into `source` JSON so Supabase is 100% self-contained
+            orig_src = s.get("source") or "apple_music_kr"
+            if isinstance(orig_src, str) and orig_src.startswith("{"):
+                try:
+                    orig_src = json.loads(orig_src).get("src", "apple_music_kr")
+                except Exception:
+                    orig_src = "apple_music_kr"
+            item["source"] = json.dumps(
+                {
+                    "src": orig_src,
+                    "g": s.get("genre_tag"),
+                    "t_ko": s.get("title_ko"),
+                    "t_en": s.get("title_en"),
+                    "a_ko": s.get("artist_ko"),
+                    "a_en": s.get("artist_en"),
+                    "pop": s.get("popularity_score"),
+                    "rank": s.get("artist_track_rank"),
+                },
+                ensure_ascii=False,
+            )
             if use_legacy_genre_map and item.get("genre_tag") in legacy_genre_fallback:
                 item["genre_tag"] = legacy_genre_fallback[item["genre_tag"]]
             batch.append(item)

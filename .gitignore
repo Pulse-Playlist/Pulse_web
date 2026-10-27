@@ -27,3 +27,8 @@ out/
 
 # OS
 .DS_Store
+
+# Local Song Database Assets (synced to Supabase public.songs, excluded from Git/GitHub)
+crawler/data/
+web/public/data/songs.json
+web/public/data/playlists.json
