@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS public.songs (
     cover_url TEXT,
     duration_sec INTEGER,
     
-    -- Category Classification (4 Core Categories)
-    genre_tag TEXT NOT NULL CHECK (genre_tag IN ('band', 'kpop', 'rock', 'hiphop')),
+    -- Category Classification (7 Core Categories)
+    genre_tag TEXT NOT NULL CHECK (genre_tag IN ('band', 'kpop', 'rock', 'hiphop', 'edm', 'pop', 'jpop')),
     
     -- Tempo & Running Cadence Metrics
     raw_bpm NUMERIC(5, 1) NOT NULL,          -- Original extracted musical tempo (e.g., 86.0 or 172.0)

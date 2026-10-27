@@ -1,4 +1,4 @@
-export type GenreTag = 'band' | 'kpop' | 'rock' | 'hiphop';
+export type GenreTag = 'band' | 'kpop' | 'rock' | 'hiphop' | 'edm' | 'pop' | 'jpop';
 
 export type AppLanguage = 'ko' | 'en';
 

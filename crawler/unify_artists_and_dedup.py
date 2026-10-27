@@ -396,6 +396,8 @@ def sync_to_supabase(songs: List[Dict[str, Any]]) -> None:
     batch_size = 250
     total_upserted = 0
     t0 = time.time()
+    legacy_genre_fallback = {"edm": "kpop", "pop": "hiphop", "jpop": "rock"}
+    use_legacy_genre_map = False
 
     for idx in range(0, len(songs), batch_size):
         raw_batch = songs[idx : idx + batch_size]
@@ -404,9 +406,18 @@ def sync_to_supabase(songs: List[Dict[str, Any]]) -> None:
             item = {k: v for k, v in s.items() if k in ALLOWED_SUPABASE_COLUMNS}
             if not item.get("cadence_mode"):
                 item["cadence_mode"] = "native"
+            if use_legacy_genre_map and item.get("genre_tag") in legacy_genre_fallback:
+                item["genre_tag"] = legacy_genre_fallback[item["genre_tag"]]
             batch.append(item)
 
         res = requests.post(endpoint, headers=headers, json=batch, timeout=30)
+        if res.status_code == 400 and "23514" in res.text and not use_legacy_genre_map:
+            use_legacy_genre_map = True
+            for item in batch:
+                if item.get("genre_tag") in legacy_genre_fallback:
+                    item["genre_tag"] = legacy_genre_fallback[item["genre_tag"]]
+            res = requests.post(endpoint, headers=headers, json=batch, timeout=30)
+
         if res.status_code not in (200, 201, 204):
             print(f"[ERROR] Batch {idx // batch_size + 1} failed ({res.status_code}): {res.text[:300]}")
             return

@@ -13,8 +13,6 @@ interface CategoryScreenProps {
   selectedCategories: GenreTag[];
   onToggleCategory: (cat: GenreTag) => void;
   onNext: () => void;
-  onOpenArtistSelect?: () => void;
-  preferredArtists?: string[];
   onBack: () => void;
   isDark: boolean;
   onToggleTheme: () => void;
@@ -36,14 +34,15 @@ const CATEGORIES: CategoryItem[] = [
   { id: 'rock', name: { ko: '락', en: 'ROCK' }, sub: 'ROCK', icon: '🎸', accentColor: '#FF4B4B' },
   { id: 'kpop', name: { ko: '케이팝', en: 'K-POP' }, sub: 'K-POP', icon: '✨', accentColor: '#3B82F6' },
   { id: 'band', name: { ko: '밴드', en: 'BAND' }, sub: 'BAND', icon: '🥁', accentColor: '#A855F7' },
+  { id: 'edm', name: { ko: '이디엠', en: 'EDM' }, sub: 'EDM', icon: '🎧', accentColor: '#00E5FF' },
+  { id: 'pop', name: { ko: '팝', en: 'POP' }, sub: 'POP', icon: '🌎', accentColor: '#F59E0B' },
+  { id: 'jpop', name: { ko: '제이팝', en: 'J-POP' }, sub: 'J-POP', icon: '⚡', accentColor: '#EC4899' },
 ];
 
 export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   selectedCategories,
   onToggleCategory,
   onNext,
-  onOpenArtistSelect,
-  preferredArtists = [],
   onBack,
   isDark,
   onToggleTheme,
@@ -185,11 +184,12 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
           </div>
         </div>
 
-        {/* 2x2 Grid with Spring Physics */}
-        <div className="grid grid-cols-2 gap-3.5 mb-6">
-          {CATEGORIES.map((cat) => {
+        {/* 7-Genre Grid with Spring Physics */}
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          {CATEGORIES.map((cat, idx) => {
             const isSelected = selectedCategories.includes(cat.id);
             const isShaking = shakingId === cat.id;
+            const isLastOdd = idx === CATEGORIES.length - 1 && CATEGORIES.length % 2 === 1;
 
             return (
               <motion.div
@@ -203,7 +203,9 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.94 }}
                 onClick={() => handleCardClick(cat.id)}
-                className={`relative p-5 rounded-3xl border-2 flex flex-col justify-between h-36 cursor-pointer select-none transition-all duration-200 overflow-hidden ${
+                className={`relative p-4 rounded-3xl border-2 flex flex-col justify-between h-28 cursor-pointer select-none transition-all duration-200 overflow-hidden ${
+                  isLastOdd ? 'col-span-2' : ''
+                } ${
                   isSelected
                     ? 'bg-zinc-100 dark:bg-zinc-900 border-[#C4FF00] shadow-lg shadow-[#C4FF00]/15 ring-2 ring-[#C4FF00]/30'
                     : 'bg-zinc-100/70 dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
@@ -267,119 +269,32 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Spotify-Style Artist Bubble Selector Card */}
-        {onOpenArtistSelect && (
-          <motion.button
-            type="button"
-            whileHover={{ scale: 1.015 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => {
-              if (count === 0) {
-                showToast(
-                  lang === 'ko' ? '장르를 1개 이상 먼저 선택해 주세요' : 'Select at least 1 genre first',
-                  'warning'
-                );
-                return;
-              }
-              playPopSound(true);
-              onOpenArtistSelect();
-            }}
-            className="mt-3 w-full p-3.5 rounded-2xl bg-gradient-to-r from-[#C4FF00]/15 via-emerald-500/10 to-cyan-500/15 dark:from-[#C4FF00]/15 dark:via-zinc-900 dark:to-cyan-500/15 border border-[#C4FF00]/50 flex items-center justify-between text-left shadow-sm cursor-pointer group"
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-full bg-black text-[#C4FF00] flex items-center justify-center shrink-0 border border-[#C4FF00]/40 shadow-sm">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black text-zinc-900 dark:text-white">
-                    {lang === 'ko'
-                      ? '내가 좋아하는 아티스트 버블 고르기'
-                      : 'Pick Favorite Artist Bubbles'}
-                  </span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-[#C4FF00] text-black text-[9px] font-black">
-                    NEW
-                  </span>
-                </div>
-                <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-                  {preferredArtists.length > 0
-                    ? lang === 'ko'
-                      ? `선택됨: ${preferredArtists.slice(0, 3).join(', ')}${
-                          preferredArtists.length > 3 ? ` 외 ${preferredArtists.length - 3}팀` : ''
-                        }`
-                      : `Selected: ${preferredArtists.slice(0, 3).join(', ')}`
-                    : lang === 'ko'
-                    ? '선택한 아티스트 + 연관 무드 아티스트 곡을 우선 추천해요'
-                    : 'Prioritizes your favorite & related artists'}
-                </p>
-              </div>
-            </div>
-            <ArrowRight className="w-4 h-4 text-zinc-600 dark:text-[#C4FF00] shrink-0 group-hover:translate-x-0.5 transition-transform" />
-          </motion.button>
-        )}
       </main>
 
       {/* Bottom CTA */}
-      <footer className="pb-4 pt-2 z-10 space-y-2">
-        {onOpenArtistSelect && (
-          <motion.button
-            type="button"
-            disabled={count === 0}
-            onClick={() => {
-              if (count === 0) return;
-              playPopSound(true);
-              onOpenArtistSelect();
-            }}
-            whileHover={count > 0 ? { scale: 1.02 } : {}}
-            whileTap={count > 0 ? { scale: 0.96 } : {}}
-            className={`w-full py-4 px-6 rounded-2xl font-black text-base transition-all flex items-center justify-center gap-2 ${
-              count > 0
-                ? 'bg-[#C4FF00] hover:bg-[#B8F500] text-black shadow-lg shadow-[#C4FF00]/25 cursor-pointer'
-                : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'
-            }`}
-          >
-            <Sparkles className="w-5 h-5" />
-            <span>
-              {lang === 'ko'
-                ? preferredArtists.length > 0
-                  ? `아티스트 취향 변경 / 30곡 만들기 (${preferredArtists.length}팀)`
-                  : '다음: 좋아하는 아티스트 고르기'
-                : 'Next: Pick Favorite Artists'}
-            </span>
-            <ArrowRight className="w-5 h-5" />
-          </motion.button>
-        )}
-
+      <footer className="pb-4 pt-2 z-10">
         <motion.button
           type="button"
           disabled={count === 0 || isGenerating}
           onClick={handleCreatePlaylist}
-          whileHover={count > 0 ? { scale: 1.01 } : {}}
-          whileTap={count > 0 ? { scale: 0.97 } : {}}
-          className={`w-full py-3 px-6 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+          whileHover={count > 0 ? { scale: 1.02 } : {}}
+          whileTap={count > 0 ? { scale: 0.96 } : {}}
+          className={`w-full py-4 px-6 rounded-2xl font-black text-base transition-all flex items-center justify-center gap-2 ${
             count > 0
-              ? 'bg-zinc-200/80 hover:bg-zinc-300/80 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-300 dark:border-zinc-800 cursor-pointer'
-              : 'hidden'
+              ? 'bg-[#C4FF00] hover:bg-[#B8F500] text-black shadow-lg shadow-[#C4FF00]/25 cursor-pointer'
+              : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'
           }`}
         >
           {isGenerating ? (
             <div className="flex items-center gap-2">
-              <span className="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+              <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
               <span>{lang === 'ko' ? '30곡 맞춤 믹스 생성 중...' : 'Generating 30 Tracks...'}</span>
             </div>
           ) : (
             <>
-              <span>
-                {preferredArtists.length > 0
-                  ? lang === 'ko'
-                    ? `현재 아티스트 취향(${preferredArtists.length}팀)으로 바로 30곡 만들기`
-                    : `Create 30 Tracks Now (${preferredArtists.length} Artists)`
-                  : lang === 'ko'
-                  ? '아티스트 선택 건너뛰고 바로 30곡 만들기'
-                  : 'Skip Artist Selection & Create 30 Tracks'}
-              </span>
-              <ArrowRight className="w-4 h-4" />
+              <Sparkles className="w-5 h-5" />
+              <span>{lang === 'ko' ? '30곡 플레이리스트 만들기' : 'Create 30-Track Playlist'}</span>
+              <ArrowRight className="w-5 h-5" />
             </>
           )}
         </motion.button>

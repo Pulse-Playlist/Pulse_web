@@ -68,12 +68,18 @@ const CATEGORY_NAMES: Record<AppLanguage, Record<GenreTag, string>> = {
     rock: '락',
     kpop: '케이팝',
     band: '밴드',
+    edm: '이디엠',
+    pop: '팝',
+    jpop: '제이팝',
   },
   en: {
     hiphop: 'HIP-HOP',
     rock: 'ROCK',
     kpop: 'K-POP',
     band: 'BAND',
+    edm: 'EDM',
+    pop: 'POP',
+    jpop: 'J-POP',
   },
 };
 
