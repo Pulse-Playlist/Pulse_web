@@ -23,6 +23,8 @@ export interface Song {
   timing_stability: number;
   energy_rms: number;
   running_score: number;
+  popularity_score?: number;
+  artist_track_rank?: number;
   preview_url: string | null;
   itunes_track_id?: number | null;
   deezer_track_id?: number | null;

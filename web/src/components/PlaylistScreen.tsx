@@ -691,6 +691,11 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                                   {lang === 'ko' ? '🔗 연관' : '🔗 Vibe'}
                                 </span>
                               )}
+                              {((song.popularity_score ?? 0) >= 88 || (song.artist_track_rank ?? 99) <= 5) && (
+                                <span className="px-1.5 py-0.2 rounded bg-rose-500/15 text-rose-500 dark:text-rose-400 border border-rose-500/30 text-[9px] font-black shrink-0">
+                                  {lang === 'ko' ? '🔥 인기' : '🔥 HOT'}
+                                </span>
+                              )}
                               <span className="truncate">{displayArtist}</span>
                               <span>·</span>
                               <span className="shrink-0">
@@ -912,8 +917,27 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                           <div className="text-xs font-bold text-zinc-900 dark:text-white truncate">
                             {recTitle}
                           </div>
-                          <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-                            {recArtist} · {CATEGORY_NAMES[lang][song.genre_tag] || song.genre_tag}
+                          <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                            {getSongArtistMatchTier(song, preferredArtists) === 'selected' && (
+                              <span className="px-1.5 py-0.2 rounded bg-[#C4FF00] text-black text-[9px] font-black shrink-0">
+                                {lang === 'ko' ? '★ 최애' : '★ Pick'}
+                              </span>
+                            )}
+                            {getSongArtistMatchTier(song, preferredArtists) === 'related' && (
+                              <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30 text-[9px] font-black shrink-0">
+                                {lang === 'ko' ? '🔗 연관' : '🔗 Vibe'}
+                              </span>
+                            )}
+                            {((song.popularity_score ?? 0) >= 88 || (song.artist_track_rank ?? 99) <= 5) && (
+                              <span className="px-1.5 py-0.2 rounded bg-rose-500/15 text-rose-500 dark:text-rose-400 border border-rose-500/30 text-[9px] font-black shrink-0">
+                                {lang === 'ko' ? '🔥 인기' : '🔥 HOT'}
+                              </span>
+                            )}
+                            <span className="truncate">{recArtist}</span>
+                            <span>·</span>
+                            <span className="shrink-0">
+                              {CATEGORY_NAMES[lang][song.genre_tag] || song.genre_tag}
+                            </span>
                           </div>
                         </div>
                       </div>
