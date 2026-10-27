@@ -60,7 +60,7 @@ async function loadSongs(): Promise<Song[]> {
         headers.Authorization = `Bearer ${supabaseKey}`;
       }
 
-      const pageOffsets = [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000];
+      const pageOffsets = Array.from({ length: 16 }, (_, i) => i * 1000);
       const responses = await Promise.all(
         pageOffsets.map((offset) =>
           fetch(`${supabaseUrl}/rest/v1/songs?select=*&order=id.asc&offset=${offset}&limit=1000`, {
