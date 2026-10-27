@@ -102,8 +102,123 @@ export const INITIAL_SEED_ARTISTS: Record<GenreTag, string[]> = {
   hiphop: ['에픽하이', '다이나믹 듀오', '리쌍', '빈지노', '박재범', '창모', '지코', '이영지', '비와이', '기리보이', 'Eminem', 'Kendrick Lamar', 'Travis Scott', 'Post Malone'],
 };
 
+const ARTIST_ALIAS_TO_CANON: Record<string, string> = {
+  '데이식스': 'DAY6',
+  'day6': 'DAY6',
+  '아이브': 'IVE',
+  'ive': 'IVE',
+  '(여자)아이들': '(여자)아이들',
+  '(g)i-dle': '(여자)아이들',
+  'i-dle': '(여자)아이들',
+  '아이들': '(여자)아이들',
+  '투어스': '투어스',
+  'tws': '투어스',
+  '보이넥스트도어': '보이넥스트도어',
+  'boynextdoor': '보이넥스트도어',
+  '제로베이스원': '제로베이스원',
+  'zerobaseone': '제로베이스원',
+  '라이즈': '라이즈',
+  'riize': '라이즈',
+  '더 로즈': '더 로즈',
+  'the rose': '더 로즈',
+  '설': 'SURL',
+  'surl': 'SURL',
+  '엘르가든': 'ELLEGARDEN',
+  'ellegarden': 'ELLEGARDEN',
+  '스파이웨어': 'SPYAIR',
+  'spyair': 'SPYAIR',
+  '비와이': '비와이',
+  'bewhy': '비와이',
+  '그루비룸': '그루비룸',
+  'groovyroom': '그루비룸',
+  '기리보이': '기리보이',
+  'giriboy': '기리보이',
+  '염따': '염따',
+  'yumdda': '염따',
+  '프라이머리': '프라이머리',
+  'primary': '프라이머리',
+  '어반자카파': '어반자카파',
+  'urban zakapa': '어반자카파',
+  'f(x)': 'f(x)',
+  '에프엑스': 'f(x)',
+  '러브홀릭': '러브홀릭스',
+  '러브홀릭스': '러브홀릭스',
+  'loveholics': '러브홀릭스',
+  '뉴진스': 'NewJeans',
+  'newjeans': 'NewJeans',
+  '에스파': 'aespa',
+  '르세라핌': 'LE SSERAFIM',
+  'le sserafim': 'LE SSERAFIM',
+  '스테이씨': 'STAYC',
+  'stayc': 'STAYC',
+  '있지': 'ITZY',
+  'itzy': 'ITZY',
+  '스트레이 키즈': 'Stray Kids',
+  'stray kids': 'Stray Kids',
+  '엔하이픈': 'ENHYPEN',
+  'enhypen': 'ENHYPEN',
+  '에이티즈': 'ATEEZ',
+  'ateez': 'ATEEZ',
+  '트레저': 'TREASURE',
+  'treasure': 'TREASURE',
+  '블랙핑크': 'BLACKPINK',
+  'blackpink': 'BLACKPINK',
+  '트와이스': 'TWICE',
+  'twice': 'TWICE',
+  '엑소': 'EXO',
+  'exo': 'EXO',
+  '갓세븐': 'GOT7',
+  'got7': 'GOT7',
+  '악뮤': 'AKMU',
+  'akmu': 'AKMU',
+  '십센치': '10CM',
+  '10cm': '10CM',
+  '웨이브투어스': 'wave to earth',
+  'wave to earth': 'wave to earth',
+  '래드윔프스': 'RADWIMPS',
+  'radwimps': 'RADWIMPS',
+  '미세스 그린 애플': 'Mrs. GREEN APPLE',
+  'mrs. green apple': 'Mrs. GREEN APPLE',
+  '오피셜히게단디즘': 'Official HIGE DANdism',
+  'official hige dandism': 'Official HIGE DANdism',
+  '범프 오브 치킨': 'BUMP OF CHICKEN',
+  'bump of chicken': 'BUMP OF CHICKEN',
+  '요아소비': 'YOASOBI',
+  'yoasobi': 'YOASOBI',
+  '바운디': 'Vaundy',
+  'vaundy': 'Vaundy',
+  '킹누': 'King Gnu',
+  'king gnu': 'King Gnu',
+  '원 오크 록': 'ONE OK ROCK',
+  'one ok rock': 'ONE OK ROCK',
+  '아시안 쿵푸 제너레이션': 'ASIAN KUNG-FU GENERATION',
+  'asian kung-fu generation': 'ASIAN KUNG-FU GENERATION',
+  '우버월드': 'UVERworld',
+  'uverworld': 'UVERworld',
+  '카나분': 'KANA-BOON',
+  'kana-boon': 'KANA-BOON',
+};
+
 export function normalizeArtistKey(raw: string): string {
-  return (raw || '').replace(/\s*\(.*?\)\s*/g, '').trim();
+  const s = (raw || '').replace(/\u00a0/g, ' ').trim();
+  if (!s) return '';
+  const lower = s.toLowerCase();
+  if (ARTIST_ALIAS_TO_CANON[lower]) return ARTIST_ALIAS_TO_CANON[lower];
+  if (ARTIST_ALIAS_TO_CANON[s]) return ARTIST_ALIAS_TO_CANON[s];
+  if (s.startsWith('(여자)아이들') || lower.startsWith('(g)i-dle')) return '(여자)아이들';
+  if (lower.startsWith('f(x)')) return 'f(x)';
+  const stripped = s.replace(/\s*\(.*?\)\s*/g, '').trim();
+  const strippedLower = stripped.toLowerCase();
+  return ARTIST_ALIAS_TO_CANON[strippedLower] || ARTIST_ALIAS_TO_CANON[stripped] || stripped;
+}
+
+function cleanDisplayArtistName(raw: string): string {
+  const s = (raw || '').replace(/\u00a0/g, ' ').trim();
+  if (!s) return '';
+  if (s.startsWith('(여자)아이들')) return '(여자)아이들';
+  if (s.toLowerCase().startsWith('(g)i-dle')) return '(G)I-DLE';
+  if (s.toLowerCase().startsWith('f(x)')) return 'f(x)';
+  return s.replace(/\s*\(.*?\)\s*/g, '').trim();
 }
 
 /**
@@ -136,8 +251,8 @@ export function buildArtistCatalog(allSongs: Song[], targetBpm?: number): Map<st
 
       node = {
         name: rawArtist,
-        nameKo: normalizeArtistKey(s.artist_ko || rawArtist),
-        nameEn: normalizeArtistKey(s.artist_en || rawArtist),
+        nameKo: cleanDisplayArtistName(s.artist_ko || rawArtist),
+        nameEn: cleanDisplayArtistName(s.artist_en || rawArtist),
         genre: s.genre_tag,
         coverUrl: s.cover_url || '/logos/logo-green.png',
         trackCount: 0,
