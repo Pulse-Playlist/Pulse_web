@@ -156,56 +156,28 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
   return (
     <div className="flex flex-col min-h-dvh justify-between p-6 select-none relative overflow-hidden">
       {/* Top Bar */}
-      <header className="flex items-center justify-between pt-2 z-10">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label={lang === 'ko' ? '뒤로 가기' : 'Back'}
-          className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
-        >
-          <ChevronLeft className="w-6 h-6" />
-        </button>
-
-        <div className="relative w-7 h-7 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm">
-          <Image src={brandLogo} alt="PULSE" fill className="object-cover" />
+      <header className="grid grid-cols-3 items-center pt-1 z-10">
+        <div className="flex items-center justify-start">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label={lang === 'ko' ? '뒤로 가기' : 'Back'}
+            className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          {onToggleLang && (
-            <motion.button
-              whileTap={{ scale: 0.94 }}
-              type="button"
-              onClick={() => {
-                playPopSound();
-                onToggleLang();
-              }}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black border transition-colors bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 cursor-pointer shadow-sm"
-              aria-label="언어 전환"
-            >
-              <span
-                className={
-                  lang === 'ko'
-                    ? 'text-black dark:text-[#C4FF00] font-black'
-                    : 'text-zinc-400 font-semibold'
-                }
-              >
-                한
-              </span>
-              <span className="text-zinc-400 text-[10px]">/</span>
-              <span
-                className={
-                  lang === 'en'
-                    ? 'text-black dark:text-[#C4FF00] font-black'
-                    : 'text-zinc-400 font-semibold'
-                }
-              >
-                EN
-              </span>
-            </motion.button>
-          )}
-
-          <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
+        <div className="flex items-center justify-center gap-2">
+          <div className="relative w-6 h-6 rounded-md overflow-hidden border border-zinc-200 dark:border-zinc-800">
+            <Image src={brandLogo} alt="PULSE" fill className="object-cover" />
+          </div>
+          <span className="font-black tracking-widest text-sm uppercase font-display text-zinc-900 dark:text-white">
+            PULSE
+          </span>
         </div>
+
+        <div />
       </header>
 
       {/* Main Tap Pad Section */}

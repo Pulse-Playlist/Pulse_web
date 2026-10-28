@@ -236,62 +236,30 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
   return (
     <div className="flex flex-col min-h-dvh justify-between select-none relative overflow-hidden pb-36">
       {/* Sticky Top Header */}
-      <header className="sticky top-0 z-30 flex items-center justify-between px-5 py-3 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800">
-        {mode === 'edit' ? (
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label={lang === 'ko' ? '이전' : 'Back'}
-            className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-        ) : (
-          <div className="w-6 h-6 p-2 -ml-2" aria-hidden />
-        )}
+      <header className="sticky top-0 z-30 grid grid-cols-3 items-center px-5 h-14 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-zinc-200/70 dark:border-zinc-900">
+        <div className="flex items-center justify-start">
+          {mode === 'edit' && (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label={lang === 'ko' ? '이전' : 'Back'}
+              className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+          )}
+        </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative w-7 h-7 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm">
+        <div className="flex items-center justify-center gap-2">
+          <div className="relative w-6 h-6 rounded-md overflow-hidden border border-zinc-200 dark:border-zinc-800">
             <Image src={brandLogo} alt="PULSE" fill className="object-cover" />
           </div>
-          <span className="text-xs font-black tracking-widest text-zinc-900 dark:text-white uppercase font-display">
+          <span className="font-black tracking-widest text-sm uppercase font-display text-zinc-900 dark:text-white">
             PULSE
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <motion.button
-            whileTap={{ scale: 0.94 }}
-            type="button"
-            onClick={() => {
-              playPopSound();
-              onToggleLang();
-            }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black border transition-colors bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 cursor-pointer shadow-sm"
-          >
-            <span
-              className={
-                lang === 'ko'
-                  ? 'text-black dark:text-[#C4FF00] font-black'
-                  : 'text-zinc-400 font-semibold'
-              }
-            >
-              한
-            </span>
-            <span className="text-zinc-400 text-[10px]">/</span>
-            <span
-              className={
-                lang === 'en'
-                  ? 'text-black dark:text-[#C4FF00] font-black'
-                  : 'text-zinc-400 font-semibold'
-              }
-            >
-              EN
-            </span>
-          </motion.button>
-
-          <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
-        </div>
+        <div />
       </header>
 
       {/* Main Content */}

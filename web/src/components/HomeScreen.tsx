@@ -109,41 +109,38 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   return (
     <div className="flex flex-col min-h-dvh select-none pb-12">
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-20 flex items-center justify-between px-5 py-3 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800">
-        <div className="flex items-center gap-2">
-          <motion.div
-            whileHover={{ scale: 1.08, rotate: 4 }}
-            whileTap={{ scale: 0.92 }}
-            className="relative w-7 h-7 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm"
-          >
+      <header className="sticky top-0 z-20 grid grid-cols-3 items-center px-5 h-14 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-zinc-200/70 dark:border-zinc-900">
+        <div />
+
+        <div className="flex items-center justify-center gap-2">
+          <div className="relative w-6 h-6 rounded-md overflow-hidden border border-zinc-200 dark:border-zinc-800">
             <Image src={logoSrc} alt="PULSE" fill className="object-cover" priority />
-          </motion.div>
-          <span className="font-black tracking-tighter text-lg font-display text-zinc-900 dark:text-white">
+          </div>
+          <span className="font-black tracking-widest text-sm uppercase font-display text-zinc-900 dark:text-white">
             PULSE
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* KO / EN Language Toggle Pill */}
-          <motion.button
-            whileTap={{ scale: 0.94 }}
+        <div className="flex items-center justify-end gap-2.5">
+          {/* Minimal Language Toggle Text */}
+          <button
             type="button"
             onClick={() => {
               playPopSound();
               onToggleLang();
             }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black border transition-colors bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 cursor-pointer shadow-sm"
+            className="text-[11px] font-extrabold tracking-tight text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer px-1 py-0.5"
             aria-label="언어 전환 / Language toggle"
             title="한국어 / English"
           >
-            <span className={lang === 'ko' ? 'text-black dark:text-[#C4FF00] font-black' : 'text-zinc-400 font-semibold'}>
-              한
+            <span className={lang === 'ko' ? 'text-zinc-900 dark:text-[#C4FF00] font-black' : 'text-zinc-400 dark:text-zinc-600'}>
+              KO
             </span>
-            <span className="text-zinc-400 text-[10px]">/</span>
-            <span className={lang === 'en' ? 'text-black dark:text-[#C4FF00] font-black' : 'text-zinc-400 font-semibold'}>
+            <span className="mx-0.5 text-zinc-300 dark:text-zinc-700">/</span>
+            <span className={lang === 'en' ? 'text-zinc-900 dark:text-[#C4FF00] font-black' : 'text-zinc-400 dark:text-zinc-600'}>
               EN
             </span>
-          </motion.button>
+          </button>
 
           <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
         </div>
