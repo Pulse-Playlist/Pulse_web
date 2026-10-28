@@ -465,7 +465,7 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
       </main>
 
       {/* Fixed Bottom Dock: Selected Artists Tray + Generate Playlist CTA */}
-      <footer className="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-[430px] w-full z-30 px-5 pt-3 pb-4 bg-white/95 dark:bg-black/95 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 shadow-2xl">
+      <footer className="fixed bottom-0 inset-x-0 mx-auto max-w-[430px] w-full z-30 px-5 pt-3 pb-4 bg-white/95 dark:bg-black/95 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 shadow-2xl">
         {preferredArtists.length > 0 && (
           <div className="mb-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">

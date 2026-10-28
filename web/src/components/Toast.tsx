@@ -29,9 +29,9 @@ export const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
   const isSuccess = toast.type === 'success';
 
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-[380px] pointer-events-none animate-in fade-in slide-in-from-top-4 duration-200">
+    <div className="fixed top-6 inset-x-0 z-50 flex justify-center pointer-events-none px-4">
       <div
-        className={`flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md border ${
+        className={`w-full max-w-[380px] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md border animate-in fade-in slide-in-from-top-4 duration-200 ${
           isWarning
             ? 'bg-zinc-900/95 text-white border-amber-400/50 shadow-amber-500/10 animate-shake'
             : isSuccess

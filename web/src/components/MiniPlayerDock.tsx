@@ -55,14 +55,15 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ y: 80, opacity: 0, scale: 0.95 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        exit={{ y: 80, opacity: 0, scale: 0.95 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-        className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[94%] max-w-[410px] z-40"
-      >
-        <div className="bg-zinc-950/95 text-white backdrop-blur-2xl border border-zinc-800/90 rounded-3xl p-3 shadow-2xl flex flex-col gap-2 ring-1 ring-white/10">
+      <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center pointer-events-none px-3">
+        <motion.div
+          initial={{ y: 80, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: 80, opacity: 0, scale: 0.95 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+          className="w-full max-w-[406px] pointer-events-auto"
+        >
+          <div className="bg-zinc-950/95 text-white backdrop-blur-2xl border border-zinc-800/90 rounded-3xl p-3 shadow-2xl flex flex-col gap-2 ring-1 ring-white/10">
           {/* Progress line */}
           <div className="w-full bg-zinc-800/80 h-1 rounded-full overflow-hidden">
             <div
@@ -184,7 +185,8 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
             </div>
           </div>
         </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </AnimatePresence>
   );
 };
