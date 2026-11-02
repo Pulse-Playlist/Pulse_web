@@ -1,0 +1,47 @@
+name: Supabase Keep-Alive Ping
+
+on:
+  schedule:
+    # 3일마다 한국시간 오전 09:00 (00:00 UTC) 실행 — Supabase 무료 플랜 7일 비활성 일시정지 방지
+    - cron: "0 0 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Ping Supabase REST API (public.songs)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_SECRET_KEY || secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "::error::SUPABASE_URL or SUPABASE_KEY secret is not configured in GitHub repository settings."
+            exit 1
+          fi
+
+          BASE_URL="${SUPABASE_URL%/}"
+          ENDPOINT="${BASE_URL}/rest/v1/songs?select=id&limit=1"
+
+          AUTH_HEADER=()
+          if [[ "$SUPABASE_KEY" != sb_* ]]; then
+            AUTH_HEADER=(-H "Authorization: Bearer ${SUPABASE_KEY}")
+          fi
+
+          HTTP_CODE=$(curl -sS -o /tmp/supabase_ping.json -w "%{http_code}" \
+            -H "apikey: ${SUPABASE_KEY}" \
+            "${AUTH_HEADER[@]}" \
+            "${ENDPOINT}")
+
+          echo "Supabase HTTP status: ${HTTP_CODE}"
+          cat /tmp/supabase_ping.json
+          echo ""
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::error::Supabase keep-alive ping failed with status ${HTTP_CODE}"
+            exit 1
+          fi
+
+          echo "✅ Supabase DB is awake and healthy!"
