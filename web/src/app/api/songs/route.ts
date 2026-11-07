@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import zlib from 'zlib';
 import { Song, SongsResponse } from '@/types/song';
+import { fetchAllSongsFromSupabase } from '@/lib/supabaseSongs';
 
 export const dynamic = 'force-dynamic';
+
+let cachedServerSongs: Song[] | null = null;
+let cachedAt = 0;
 
 function loadLocalSongs(): Song[] {
   const candidatePaths = [
@@ -31,6 +36,10 @@ function loadLocalSongs(): Song[] {
 }
 
 async function loadSongs(): Promise<Song[]> {
+  if (cachedServerSongs && cachedServerSongs.length > 0 && Date.now() - cachedAt < 300_000) {
+    return cachedServerSongs;
+  }
+
   const localSongs = loadLocalSongs();
   const localByKey = new Map<string, Song>();
   for (const s of localSongs) {
@@ -39,79 +48,21 @@ async function loadSongs(): Promise<Song[]> {
     }
   }
 
-  const supabaseUrl = (
-    process.env.SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    ''
-  ).replace(/\/$/, '');
-  const supabaseKey =
-    process.env.SUPABASE_SECRET_KEY ||
-    process.env.SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    '';
-
-  if (supabaseUrl && supabaseKey) {
-    try {
-      const headers: Record<string, string> = {
-        apikey: supabaseKey,
-        Accept: 'application/json',
-      };
-      if (!supabaseKey.startsWith('sb_')) {
-        headers.Authorization = `Bearer ${supabaseKey}`;
-      }
-
-      const pageOffsets = Array.from({ length: 25 }, (_, i) => i * 1000);
-      const responses = await Promise.all(
-        pageOffsets.map((offset) =>
-          fetch(`${supabaseUrl}/rest/v1/songs?select=*&order=id.asc&offset=${offset}&limit=1000`, {
-            headers,
-            cache: 'no-store',
-          })
-        )
-      );
-
-      if (responses[0].ok) {
-        const pages = await Promise.all(
-          responses.map(async (r) => (r.ok ? await r.json() : []))
-        );
-        const data = pages.flatMap((p) => (Array.isArray(p) ? p : []));
-        if (data.length >= 100) {
-          return (data as Song[]).map((row) => {
-            let meta: Record<string, unknown> = {};
-            if (typeof row.source === 'string' && row.source.startsWith('{')) {
-              try {
-                meta = JSON.parse(row.source);
-              } catch {
-                // ignore malformed JSON
-              }
-            }
-            const local = row.normalized_key ? localByKey.get(row.normalized_key) : undefined;
-            return {
-              ...row,
-              source: (meta.src as string) || row.source,
-              genre_tag: ((meta.g as Song['genre_tag']) || local?.genre_tag || row.genre_tag),
-              popularity_score:
-                (typeof meta.pop === 'number' ? meta.pop : undefined) ??
-                local?.popularity_score ??
-                row.popularity_score ??
-                row.running_score,
-              artist_track_rank:
-                (typeof meta.rank === 'number' ? meta.rank : undefined) ??
-                local?.artist_track_rank ??
-                row.artist_track_rank,
-              title_ko: (meta.t_ko as string) || row.title_ko || local?.title_ko || row.title,
-              title_en: (meta.t_en as string) || row.title_en || local?.title_en || row.title,
-              artist_ko: (meta.a_ko as string) || row.artist_ko || local?.artist_ko || row.artist,
-              artist_en: (meta.a_en as string) || row.artist_en || local?.artist_en || row.artist,
-            };
-          });
-        }
-      }
-    } catch (err) {
-      console.warn('Supabase fetch fallback to local songs.json:', err);
+  try {
+    const supabaseSongs = await fetchAllSongsFromSupabase(undefined, localByKey);
+    if (supabaseSongs.length >= 100) {
+      cachedServerSongs = supabaseSongs;
+      cachedAt = Date.now();
+      return supabaseSongs;
     }
+  } catch (err) {
+    console.warn('Supabase fetch fallback to local songs.json:', err);
   }
 
+  if (localSongs.length > 0) {
+    cachedServerSongs = localSongs;
+    cachedAt = Date.now();
+  }
   return localSongs;
 }
 
@@ -122,6 +73,7 @@ export async function GET(request: NextRequest) {
     const cadence = searchParams.get('cadence') ? Number(searchParams.get('cadence')) : null;
     const tolerance = searchParams.get('tolerance') ? Number(searchParams.get('tolerance')) : null;
     const search = searchParams.get('search')?.toLowerCase().trim() || '';
+    const offset = searchParams.get('offset') ? Number(searchParams.get('offset')) : 0;
     const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : null;
 
     const allSongs = await loadSongs();
@@ -183,19 +135,39 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const totalFiltered = filtered.length;
+    if (offset > 0) {
+      filtered = filtered.slice(offset);
+    }
     if (limit && limit > 0) {
       filtered = filtered.slice(0, limit);
     }
 
     const response: SongsResponse & { filtered_count: number } = {
       total: allSongs.length,
-      filtered_count: filtered.length,
+      filtered_count: totalFiltered,
       category_counts,
       bpm_min: bpmMin === 999 ? 0 : bpmMin,
       bpm_max: bpmMax,
       bpm_avg: bpmAvg,
       songs: filtered,
     };
+
+    const jsonString = JSON.stringify(response);
+    const acceptEncoding = request.headers.get('accept-encoding') || '';
+
+    // Compress large payloads with gzip so Vercel Serverless Functions stay under the 4.5MB limit
+    if (acceptEncoding.includes('gzip') && jsonString.length > 500_000) {
+      const compressed = zlib.gzipSync(Buffer.from(jsonString, 'utf-8'));
+      return new NextResponse(compressed, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Content-Encoding': 'gzip',
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
 
     return NextResponse.json(response);
   } catch (error) {

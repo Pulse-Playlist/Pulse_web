@@ -1,4 +1,5 @@
 import { GenreTag, Song } from '@/types/song';
+import { SEED_ARTIST_METADATA } from './seedArtistMetadata';
 
 export interface ArtistNode {
   name: string;
@@ -343,6 +344,26 @@ export function buildArtistCatalog(allSongs: Song[], targetBpm?: number): Map<st
       if (!reverseCluster.has(r)) reverseCluster.set(r, new Set());
       reverseCluster.get(r)!.add(seed);
     }
+  }
+
+  // Pre-seed catalog from static metadata so ArtistSelectScreen renders instantaneously on Vercel
+  // even before the full 22,019-song Supabase dataset finishes streaming.
+  const hasLiveSongs = allSongs.length > 0;
+  for (const [artistKey, seedMeta] of Object.entries(SEED_ARTIST_METADATA)) {
+    const explicitRelated = ARTIST_SIMILARITY_CLUSTERS[artistKey] || [];
+    const revRelated = Array.from(reverseCluster.get(artistKey) || []);
+    const combinedRelated = Array.from(new Set([...explicitRelated, ...revRelated]));
+
+    map.set(artistKey, {
+      name: seedMeta.name,
+      nameKo: seedMeta.nameKo,
+      nameEn: seedMeta.nameEn,
+      genre: seedMeta.genre,
+      coverUrl: seedMeta.coverUrl || '/logos/logo-green.png',
+      trackCount: hasLiveSongs ? 0 : seedMeta.trackCount,
+      bpm130_180Count: hasLiveSongs ? 0 : seedMeta.bpm130_180Count,
+      related: combinedRelated,
+    });
   }
 
   for (const s of allSongs) {

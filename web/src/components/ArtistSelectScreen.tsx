@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import {
   ChevronLeft,
@@ -71,10 +71,11 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
   // Track which artists were dynamically inserted into the grid by clicking a parent artist
   const [spawnedByMap, setSpawnedByMap] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const lastTabKeyRef = useRef<string>('');
 
   const brandLogo = isDark ? '/logos/logo-dark.png' : '/logos/logo-green.png';
 
-  // Build artist catalog dynamically from all 14,707 songs
+  // Build artist catalog dynamically from all 22,019 songs (pre-seeded for instant render)
   const catalog = useMemo(
     () => buildArtistCatalog(allSongs, targetBpm),
     [allSongs, targetBpm]
@@ -85,9 +86,19 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
     [preferredArtists]
   );
 
-  // Build initial base list whenever activeTab or catalog changes
+  // Build initial base list whenever activeTab or selectedCategories changes (or on first populate)
   useEffect(() => {
     if (catalog.size === 0) return;
+
+    const tabKey = `${activeTab}::${selectedCategories.join(',')}`;
+    const isTabChange = lastTabKeyRef.current !== tabKey;
+
+    // If the user is already viewing the grid on the same tab, don't wipe out their spawned bubbles
+    // when background song batches finish streaming in.
+    if (!isTabChange && gridArtistNames.length > 0) {
+      return;
+    }
+    lastTabKeyRef.current = tabKey;
 
     const allNodes = Array.from(catalog.values());
     const targetGenres: GenreTag[] =
@@ -127,7 +138,7 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
 
     setGridArtistNames(initialNames);
     setSpawnedByMap({});
-  }, [catalog, activeTab, selectedCategories]);
+  }, [catalog, activeTab, selectedCategories, gridArtistNames.length]);
 
   // Spotify-style in-place bubble expansion:
   // Tapping an artist keeps it in its exact spot and splices 3 related artists directly after it in the grid!

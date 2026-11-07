@@ -3,16 +3,24 @@ import fs from 'fs';
 import path from 'path';
 import { SavedPlaylist, Song, GenreTag } from '@/types/song';
 import { getSongBpm } from '@/lib/playlistGenerator';
+import {
+  getSupabaseConfig,
+  getSupabaseHeaders,
+  normalizeSupabaseSongRow,
+} from '@/lib/supabaseSongs';
+
+let memoryPlaylistsCache: SavedPlaylist[] | null = null;
 
 function getPlaylistsFilePaths(): { primary: string; candidates: string[] } {
   const candidates = [
     path.resolve(process.cwd(), 'public/data/playlists.json'),
     path.resolve(process.cwd(), 'web/public/data/playlists.json'),
     '/Users/appledeveloperacademy/Documents/GitHub/Pulse_web/web/public/data/playlists.json',
+    '/tmp/pulse_playlists.json',
   ];
   const primary = fs.existsSync(path.resolve(process.cwd(), 'public'))
     ? path.resolve(process.cwd(), 'public/data/playlists.json')
-    : path.resolve(process.cwd(), 'web/public/data/playlists.json');
+    : '/tmp/pulse_playlists.json';
 
   return { primary, candidates };
 }
@@ -36,6 +44,30 @@ function loadSongsFromLocal(): Song[] {
     } catch {
       // ignore and try next
     }
+  }
+  return [];
+}
+
+async function loadStarterSongsPool(): Promise<Song[]> {
+  const local = loadSongsFromLocal();
+  if (local.length > 0) return local;
+
+  // On Vercel where songs.json is gitignored, fetch top popular songs from Supabase for starter playlists
+  try {
+    const { url, key } = getSupabaseConfig();
+    const headers = getSupabaseHeaders(key);
+    const res = await fetch(
+      `${url}/rest/v1/songs?select=id,title,artist,normalized_key,album,cover_url,duration_sec,genre_tag,raw_bpm,running_bpm,running_score,preview_url,itunes_track_id,source&order=running_score.desc.nullslast&limit=2000`,
+      { headers, cache: 'no-store' }
+    );
+    if (res.ok) {
+      const rows = await res.json();
+      if (Array.isArray(rows)) {
+        return (rows as Song[]).map((r) => normalizeSupabaseSongRow(r));
+      }
+    }
+  } catch (err) {
+    console.warn('Could not fetch starter songs from Supabase:', err);
   }
   return [];
 }
@@ -115,15 +147,24 @@ function generateStarterPlaylists(allSongs: Song[]): SavedPlaylist[] {
   ];
 }
 
-function readPlaylists(): SavedPlaylist[] {
+async function readPlaylists(): Promise<SavedPlaylist[]> {
+  if (memoryPlaylistsCache && memoryPlaylistsCache.some((p) => p.songs && p.songs.length > 0)) {
+    return memoryPlaylistsCache;
+  }
+
   const { candidates } = getPlaylistsFilePaths();
   for (const p of candidates) {
     try {
       if (fs.existsSync(p)) {
         const raw = fs.readFileSync(p, 'utf-8');
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed as SavedPlaylist[];
+        if (
+          Array.isArray(parsed) &&
+          parsed.length > 0 &&
+          parsed.some((pl: SavedPlaylist) => Array.isArray(pl.songs) && pl.songs.length > 0)
+        ) {
+          memoryPlaylistsCache = parsed as SavedPlaylist[];
+          return memoryPlaylistsCache;
         }
       }
     } catch {
@@ -132,13 +173,15 @@ function readPlaylists(): SavedPlaylist[] {
   }
 
   // Generate starters if file does not exist or empty
-  const songs = loadSongsFromLocal();
+  const songs = await loadStarterSongsPool();
   const starters = generateStarterPlaylists(songs);
   writePlaylists(starters);
   return starters;
 }
 
 function writePlaylists(playlists: SavedPlaylist[]): void {
+  memoryPlaylistsCache = playlists;
+
   const { primary, candidates } = getPlaylistsFilePaths();
   let targetPath = primary;
   for (const c of candidates) {
@@ -154,8 +197,13 @@ function writePlaylists(playlists: SavedPlaylist[]): void {
       fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(targetPath, JSON.stringify(playlists, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Failed to write playlists.json:', err);
+  } catch {
+    // Fallback to writable /tmp directory on Vercel Serverless environment
+    try {
+      fs.writeFileSync('/tmp/pulse_playlists.json', JSON.stringify(playlists, null, 2), 'utf-8');
+    } catch {
+      // In-memory cache still holds the updated playlists
+    }
   }
 }
 
@@ -165,7 +213,7 @@ export async function GET(request: NextRequest) {
     const bpm = searchParams.get('bpm') ? Number(searchParams.get('bpm')) : null;
     const category = searchParams.get('category');
 
-    let playlists = readPlaylists();
+    let playlists = await readPlaylists();
 
     if (bpm) {
       playlists = playlists.filter((p) => Math.abs(p.bpm - bpm) <= 5);
@@ -210,7 +258,7 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    const currentPlaylists = readPlaylists();
+    const currentPlaylists = await readPlaylists();
     const updatedPlaylists = [newPlaylist, ...currentPlaylists];
     writePlaylists(updatedPlaylists);
 
@@ -233,7 +281,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Playlist id is required' }, { status: 400 });
     }
 
-    const playlists = readPlaylists();
+    const playlists = await readPlaylists();
     let updatedLikes = 0;
     let found = false;
 

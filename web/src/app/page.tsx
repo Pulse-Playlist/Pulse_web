@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Song, GenreTag, SongsResponse, AppLanguage, SavedPlaylist, getSongTitle } from '@/types/song';
 import { generatePlaylist, getRecommendedSongs } from '@/lib/playlistGenerator';
+import { fetchAllSongsFromSupabase } from '@/lib/supabaseSongs';
 import { HomeScreen } from '@/components/HomeScreen';
 import { BpmScreen } from '@/components/BpmScreen';
 import { TapTempoScreen } from '@/components/TapTempoScreen';
@@ -365,15 +366,29 @@ export default function Page() {
     loadCommunityPlaylists();
   }, []);
 
-  // Fetch song database and handle initial URL query params (?bpm=170&cats=band,rock)
+  // Fetch song database directly from Supabase (with /api/songs fallback) and handle initial URL query params
   useEffect(() => {
     async function loadSongs() {
       try {
         setIsLoadingSongs(true);
-        const res = await fetch('/api/songs');
-        if (!res.ok) throw new Error('곡 데이터베이스 로드 실패');
-        const data: SongsResponse = await res.json();
-        const songs = data.songs || [];
+        let songs = await fetchAllSongsFromSupabase((partial) => {
+          if (partial.length > 0) {
+            setAllSongs(partial);
+          }
+        });
+
+        // Fallback to local /api/songs route if direct Supabase fetch returned empty
+        if (songs.length === 0) {
+          const res = await fetch('/api/songs');
+          if (res.ok) {
+            const data: SongsResponse = await res.json();
+            songs = data.songs || [];
+          }
+        }
+
+        if (songs.length === 0) {
+          throw new Error('곡 데이터베이스 로드 실패');
+        }
         setAllSongs(songs);
 
         // Check URL query parameters for shared playlist
@@ -585,7 +600,7 @@ export default function Page() {
   };
 
   // Generate 30-song playlist
-  const handleGeneratePlaylist = () => {
+  const handleGeneratePlaylist = async () => {
     if (!selectedCategories.length) {
       showToast(
         lang === 'ko' ? '장르를 1개 이상 선택해 주세요' : 'Please select at least 1 genre',
@@ -594,8 +609,20 @@ export default function Page() {
       return;
     }
 
-    const newPlaylist = generatePlaylist(allSongs, targetBpm, selectedCategories, preferredArtists);
-    const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, newPlaylist, 8, preferredArtists);
+    let songsPool = allSongs;
+    if (songsPool.length === 0) {
+      showToast(
+        lang === 'ko' ? '음원 데이터베이스 연결 중입니다...' : 'Connecting to song database...',
+        'info'
+      );
+      songsPool = await fetchAllSongsFromSupabase();
+      if (songsPool.length > 0) {
+        setAllSongs(songsPool);
+      }
+    }
+
+    const newPlaylist = generatePlaylist(songsPool, targetBpm, selectedCategories, preferredArtists);
+    const recs = getRecommendedSongs(songsPool, targetBpm, selectedCategories, newPlaylist, 8, preferredArtists);
 
     setPlaylist(newPlaylist);
     setRecommendedSongs(recs);
@@ -709,7 +736,7 @@ export default function Page() {
                 onSelectPlaylist={handleSelectCommunityPlaylist}
                 communityPlaylists={communityPlaylists}
                 onLikePlaylist={handleLikePlaylist}
-                totalSongsCount={allSongs.length || 14707}
+                totalSongsCount={allSongs.length || 22019}
               />
             )}
 
