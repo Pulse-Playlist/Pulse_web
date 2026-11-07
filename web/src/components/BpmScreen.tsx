@@ -376,7 +376,10 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
               step={1}
               value={Math.max(80, Math.min(200, bpm))}
               onChange={handleSliderChange}
-              style={{ accentColor: zone.color }}
+              style={{
+                accentColor: zone.color,
+                ['--slider-thumb-color' as string]: zone.color,
+              }}
               className="w-full cursor-pointer h-2 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none"
             />
             <div className="flex justify-between text-[11px] font-bold text-zinc-400 mt-2">
@@ -445,7 +448,7 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
           onClick={handleNavigateTapTempo}
           className="w-full mt-3 py-3 px-5 rounded-full bg-white/80 dark:bg-zinc-900/80 hover:bg-white dark:hover:bg-zinc-800 backdrop-blur-xl border border-black/5 dark:border-white/10 text-zinc-900 dark:text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-transform cursor-pointer shadow-sm"
         >
-          <Hand className="w-4 h-4 text-[#C4FF00]" />
+          <Hand className="w-4 h-4" style={{ color: zone.color }} />
           <span>
             {lang === 'ko'
               ? '내 발걸음에 맞추기? 화면 탭해서 템포 찾기'
@@ -459,7 +462,11 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
         <button
           type="button"
           onClick={handleNavigateNext}
-          className="w-full py-4 px-6 rounded-full bg-[#C4FF00] hover:bg-[#B8F500] text-black font-black text-base shadow-sm active:scale-[0.98] transition-transform flex items-center justify-center gap-2 cursor-pointer"
+          style={{
+            backgroundColor: zone.color,
+            color: bpm <= 130 ? '#000000' : '#FFFFFF',
+          }}
+          className="w-full py-4 px-6 rounded-full font-black text-base shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <span>{lang === 'ko' ? '다음 단계 (장르 선택)' : 'Next (Select Genres)'}</span>
           <ArrowRight className="w-5 h-5 stroke-[2.5]" />

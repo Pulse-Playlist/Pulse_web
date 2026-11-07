@@ -14,6 +14,7 @@ export interface BottomTabBarProps {
   hasActivePlaylist: boolean;
   lang: AppLanguage;
   isDark: boolean;
+  activeZoneColor?: string;
 }
 
 interface TabItem {
@@ -68,7 +69,10 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
   hasActivePlaylist: _hasActivePlaylist,
   lang,
   isDark,
+  activeZoneColor = '#C4FF00',
 }) => {
+  const isLimeZone = activeZoneColor === '#C4FF00';
+
   const handleTabClick = (tabId: AppStep) => {
     playPopSound(true);
     onSelectStep(tabId);
@@ -79,11 +83,19 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
       aria-label="Bottom Navigation"
       className="fixed bottom-3 inset-x-0 z-50 flex justify-center pointer-events-none px-4"
     >
-      <div className="pointer-events-auto w-full max-w-[390px] h-[56px] p-1 rounded-full bg-white/88 dark:bg-zinc-900/90 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.12] shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_10px_34px_rgba(0,0,0,0.55)] flex items-center justify-between">
+      <div className="pointer-events-auto w-full max-w-[390px] h-[56px] p-1 rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.12] shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_10px_34px_rgba(0,0,0,0.55)] flex items-center justify-between">
         {TABS.map((tab) => {
           const active = tab.isActive(activeStep);
           const Icon = tab.icon;
           const label = lang === 'ko' ? tab.labelKo : tab.labelEn;
+
+          const activeColorStyle = active
+            ? isDark
+              ? { color: activeZoneColor }
+              : !isLimeZone
+              ? { color: activeZoneColor }
+              : undefined
+            : undefined;
 
           return (
             <button
@@ -111,25 +123,30 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
                 <Icon
                   className={`w-[18px] h-[18px] transition-colors duration-150 ${
                     active
-                      ? isDark
-                        ? 'text-[#C4FF00]'
-                        : 'text-zinc-950'
+                      ? isDark || !isLimeZone
+                        ? ''
+                        : 'text-zinc-950 font-bold'
                       : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
                   }`}
+                  style={activeColorStyle}
                   strokeWidth={active ? 2.5 : 2}
                 />
                 <span
                   className={`text-[10px] font-semibold tracking-tight leading-none mt-0.5 flex items-center gap-0.5 transition-colors duration-150 ${
                     active
-                      ? isDark
-                        ? 'text-[#C4FF00]'
+                      ? isDark || !isLimeZone
+                        ? ''
                         : 'text-zinc-950 font-bold'
                       : 'text-zinc-500 dark:text-zinc-400 font-medium'
                   }`}
+                  style={activeColorStyle}
                 >
                   {label}
                   {active && !isDark && (
-                    <span className="w-1 h-1 rounded-full bg-[#C4FF00] shrink-0" />
+                    <span
+                      className="w-1 h-1 rounded-full shrink-0"
+                      style={{ backgroundColor: activeZoneColor }}
+                    />
                   )}
                 </span>
               </div>

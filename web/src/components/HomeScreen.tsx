@@ -506,6 +506,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               >
                 {col.map((song, rowIdx) => {
                   const bpm = song.running_bpm || song.raw_bpm || 150;
+                  const zoneStyle = getBpmZoneStyle(bpm);
                   const isStarred =
                     (preferredArtists &&
                       preferredArtists.some((pa) =>
@@ -523,12 +524,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         playPopSound();
                         onSelectSongPreview?.(song);
                       }}
-                      className="flex items-center gap-3 py-2 border-b border-zinc-200/70 dark:border-zinc-800/70 last:border-b-0 group cursor-pointer active:bg-black/5 dark:active:bg-white/5 rounded-xl px-1 transition-colors"
+                      className={`flex items-center gap-3 py-2 border-b border-zinc-200/70 dark:border-zinc-800/70 last:border-b-0 group cursor-pointer rounded-xl px-1.5 transition-colors ${
+                        isCurrentTrack
+                          ? `${zoneStyle.bg} border-transparent`
+                          : 'hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/5 dark:active:bg-white/5'
+                      }`}
                     >
                       {/* Left: Star indicator */}
                       <div className="w-3.5 shrink-0 flex items-center justify-center">
                         {isStarred ? (
-                          <Star className="w-3.5 h-3.5 text-[#C4FF00] fill-[#C4FF00]" />
+                          <Star
+                            className="w-3.5 h-3.5 fill-current"
+                            style={{ color: zoneStyle.accent }}
+                          />
                         ) : (
                           <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity" />
                         )}
@@ -559,7 +567,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                           }`}
                         >
                           {isPlaying ? (
-                            <Pause className="w-4 h-4 text-[#C4FF00] fill-[#C4FF00]" />
+                            <Pause
+                              className="w-4 h-4 fill-current"
+                              style={{ color: zoneStyle.accent }}
+                            />
                           ) : (
                             <Play className="w-4 h-4 text-white fill-white ml-0.5" />
                           )}
@@ -571,8 +582,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         <h4
                           className={`text-[14px] font-bold truncate transition-colors ${
                             isCurrentTrack
-                              ? 'text-[#00A344] dark:text-[#C4FF00]'
-                              : 'text-zinc-900 dark:text-white group-hover:text-[#00A344] dark:group-hover:text-[#C4FF00]'
+                              ? zoneStyle.text
+                              : 'text-zinc-900 dark:text-white group-hover:text-zinc-700 dark:group-hover:text-zinc-200'
                           }`}
                         >
                           {getSongTitle(song, lang)}
@@ -582,10 +593,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         </p>
                       </div>
 
-                      {/* Right: Compact BPM tag & More button */}
+                      {/* Right: BPM Zone Badge & More button */}
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-300">
-                          {bpm}
+                        <span
+                          className={`text-[10px] font-black px-2 py-0.5 rounded-md tabular-nums ${zoneStyle.bg} ${zoneStyle.text} border ${zoneStyle.border}`}
+                        >
+                          {bpm} BPM
                         </span>
                         <button
                           type="button"

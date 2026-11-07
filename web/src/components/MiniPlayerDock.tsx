@@ -47,6 +47,8 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
 
   const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
   const songBpm = getSongBpm(currentSong) || targetBpm;
+  const songZoneColor = songBpm <= 130 ? '#C4FF00' : songBpm <= 160 ? '#3B82F6' : '#FF4B4B';
+  const isLime = songBpm <= 130;
   const title = getSongTitle(currentSong, lang);
   const artist = getSongArtist(currentSong, lang);
 
@@ -58,24 +60,25 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 20, opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 380 }}
-          className="pointer-events-auto w-full max-w-[390px] h-[52px] px-3 rounded-full bg-white/90 dark:bg-zinc-900/92 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.12] shadow-[0_6px_24px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.5)] flex items-center justify-between gap-2.5 relative overflow-hidden"
+          className="pointer-events-auto w-full max-w-[390px] h-[52px] px-3 rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.12] shadow-[0_6px_24px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.5)] flex items-center justify-between gap-2.5 relative overflow-hidden"
         >
-          {/* Bottom edge progress bar when active */}
+          {/* Bottom edge progress bar synchronized with songZoneColor */}
           {duration > 0 && (
             <div className="absolute bottom-0 inset-x-4 h-[2px] bg-black/5 dark:bg-white/10 overflow-hidden rounded-full">
               <div
-                className="bg-[#C4FF00] h-full transition-all duration-150 rounded-full"
-                style={{ width: `${progress}%` }}
+                className="h-full transition-all duration-150 rounded-full"
+                style={{ width: `${progress}%`, backgroundColor: songZoneColor }}
               />
             </div>
           )}
 
-          {/* Left: Thumbnail (Crisp and clean, without bouncing bars) */}
+          {/* Left: Thumbnail (Crisp and clean, with BPM zone border glow when playing) */}
           <button
             type="button"
             onClick={onOpenPlaylist}
             aria-label={`${title} - ${artist}`}
-            className="w-9 h-9 rounded-xl overflow-hidden shrink-0 bg-zinc-200/80 dark:bg-zinc-800 flex items-center justify-center relative shadow-xs cursor-pointer focus:outline-hidden"
+            style={isPlaying ? { borderColor: `${songZoneColor}80`, borderWidth: '1.5px' } : undefined}
+            className="w-9 h-9 rounded-xl overflow-hidden shrink-0 bg-zinc-200/80 dark:bg-zinc-800 border border-transparent flex items-center justify-center relative shadow-xs cursor-pointer focus:outline-hidden transition-colors"
           >
             {currentSong.cover_url ? (
               <Image
@@ -99,7 +102,10 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
             <div className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-400 truncate flex items-center gap-1">
               <span>PULSE</span>
               <span className="text-zinc-400 dark:text-zinc-500">→</span>
-              <span className="text-zinc-500 dark:text-zinc-300 font-bold">
+              <span
+                className={`font-bold ${isLime ? 'text-[#3f6212] dark:text-[#C4FF00]' : ''}`}
+                style={!isLime ? { color: songZoneColor } : undefined}
+              >
                 {songBpm} BPM
               </span>
             </div>
@@ -114,12 +120,24 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
               type="button"
               onClick={onTogglePlay}
               aria-label={isPlaying ? (lang === 'ko' ? '일시 정지' : 'Pause') : (lang === 'ko' ? '재생' : 'Play')}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-900 dark:text-white hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+              style={
+                isPlaying
+                  ? {
+                      backgroundColor: songZoneColor,
+                      color: isLime ? '#000000' : '#FFFFFF',
+                    }
+                  : undefined
+              }
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95 ${
+                isPlaying
+                  ? 'shadow-xs'
+                  : 'text-zinc-900 dark:text-white hover:bg-black/5 dark:hover:bg-white/10'
+              }`}
             >
               {isPlaying ? (
-                <Pause className="w-4 h-4 fill-current text-zinc-900 dark:text-white" />
+                <Pause className="w-4 h-4 fill-current" />
               ) : (
-                <Play className="w-4 h-4 fill-current text-zinc-900 dark:text-white ml-0.5" />
+                <Play className="w-4 h-4 fill-current ml-0.5" />
               )}
             </button>
 
@@ -130,7 +148,7 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
                 aria-label={lang === 'ko' ? '다음 곡' : 'Next track'}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-900 dark:text-white hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
               >
-                <FastForward className="w-4 h-4 fill-current text-zinc-900 dark:text-white" />
+                <FastForward className="w-4 h-4 fill-current" />
               </button>
             )}
 

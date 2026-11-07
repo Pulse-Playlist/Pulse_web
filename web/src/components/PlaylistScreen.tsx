@@ -129,6 +129,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
   const coverUrl = getPlaylistCoverUrl(targetBpm);
   const zone = getBpmZoneLabel(targetBpm);
   const zoneColor = targetBpm <= 130 ? '#C4FF00' : targetBpm <= 160 ? '#3B82F6' : '#FF4B4B';
+  const isLimeZone = targetBpm <= 130;
 
   // Total duration in minutes / hours
   const totalDurationSec = useMemo(() => {
@@ -284,7 +285,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
 
       {/* Main Content */}
       <main className="px-5 pt-3">
-        {/* 2. Hero Artwork + Proportional Calendar-Style BPM Badge (No neon halos or infinite bouncing) */}
+        {/* 2. Hero Artwork + Proportional Calendar-Style BPM Badge */}
         <div className="relative w-40 h-40 mx-auto mt-2">
           {/* Clean, static Apple HIG circular cover */}
           <div
@@ -300,11 +301,14 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               className="object-cover transition-transform duration-300 group-hover:scale-105"
             />
 
-            {/* Clean audio playing overlay (static, no animate-ping) */}
+            {/* Clean audio playing overlay with zoneColor synchronized dot */}
             {isPlayingAudio && (
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                 <div className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 flex items-center gap-1.5 shadow-md">
-                  <span className="w-2 h-2 rounded-full bg-[#C4FF00]" />
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: zoneColor }}
+                  />
                   <span className="text-[10px] font-bold tracking-wider text-white">
                     PLAYING
                   </span>
@@ -359,12 +363,15 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               <h1 className="text-[24px] font-black tracking-tight text-zinc-900 dark:text-white leading-tight truncate">
                 {playlistTitle}
               </h1>
-              <Edit2 className="w-4 h-4 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-[#C4FF00] shrink-0 transition-colors" />
+              <Edit2
+                className="w-4 h-4 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-[#C4FF00] shrink-0 transition-colors"
+                style={{ color: !isLimeZone ? zoneColor : undefined }}
+              />
             </div>
           )}
         </div>
 
-        {/* 3. De-Gimmicked Capsule Action Buttons (Clean Apple HIG Styling) */}
+        {/* 3. De-Gimmicked Capsule Action Buttons with ZoneColor Synchronization */}
         <div className="grid grid-cols-2 gap-3 mt-5">
           {/* Left Capsule Button — Export Mix */}
           <button
@@ -372,7 +379,10 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
             onClick={() => setIsExportModalOpen(true)}
             className="py-3 px-4 rounded-full bg-zinc-200/80 dark:bg-zinc-800/80 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white font-bold text-[13px] flex items-center justify-center gap-2 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-xs cursor-pointer transition-all active:scale-98"
           >
-            <Rocket className="w-4 h-4 text-zinc-700 dark:text-[#C4FF00] shrink-0" />
+            <Rocket
+              className="w-4 h-4 text-zinc-700 dark:text-zinc-200 shrink-0"
+              style={{ color: isLimeZone ? (isDark ? '#C4FF00' : '#4D7C0F') : zoneColor }}
+            />
             <span className="truncate">{lang === 'ko' ? '플리 내보내기' : 'Export Mix'}</span>
           </button>
 
@@ -382,9 +392,14 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
             onClick={onToggleContinuousPlay}
             className={`py-3 px-4 rounded-full font-bold text-[13px] flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-all active:scale-98 ${
               isPlayingAudio
-                ? 'bg-zinc-900 text-[#C4FF00] dark:bg-zinc-800 dark:text-[#C4FF00] border border-[#C4FF00]/40'
-                : 'bg-[#C4FF00] hover:bg-[#B5F000] text-black'
+                ? 'bg-zinc-900 dark:bg-zinc-800 border'
+                : 'hover:opacity-90'
             }`}
+            style={
+              isPlayingAudio
+                ? { borderColor: `${zoneColor}80`, color: zoneColor }
+                : { backgroundColor: zoneColor, color: isLimeZone ? '#000000' : '#FFFFFF' }
+            }
           >
             {isPlayingAudio ? (
               <>
@@ -526,6 +541,8 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                 {playlist.map((song, index) => {
                   const songKey = song.normalized_key || song.title + song.artist;
                   const songBpm = getSongBpm(song);
+                  const songZoneColor = songBpm <= 130 ? '#C4FF00' : songBpm <= 160 ? '#3B82F6' : '#FF4B4B';
+                  const isSongLime = songBpm <= 130;
                   const isPlayingThis =
                     currentPlayingSong?.normalized_key === song.normalized_key && isPlayingAudio;
                   const isExactOrClose = Math.abs(songBpm - targetBpm) <= 2;
@@ -545,9 +562,10 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                       transition={{ duration: 0.15 }}
                       className={`flex flex-col transition-colors duration-150 ${
                         isPlayingThis
-                          ? 'bg-[#C4FF00]/10 dark:bg-[#C4FF00]/15'
+                          ? ''
                           : 'hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40'
                       }`}
+                      style={isPlayingThis ? { backgroundColor: `${songZoneColor}18` } : undefined}
                     >
                       {/* Main Song Row */}
                       <div className="flex items-center justify-between p-3 gap-2">
@@ -586,7 +604,10 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                               }`}
                             >
                               {isPlayingThis ? (
-                                <Pause className="w-4 h-4 fill-[#C4FF00] text-[#C4FF00]" />
+                                <Pause
+                                  className="w-4 h-4 fill-current"
+                                  style={{ color: songZoneColor }}
+                                />
                               ) : (
                                 <Play className="w-4 h-4 fill-white text-white ml-0.5" />
                               )}
@@ -599,18 +620,20 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                               <span
                                 className={`text-[13px] font-bold truncate ${
                                   isPlayingThis
-                                    ? 'text-zinc-950 dark:text-[#C4FF00]'
+                                    ? (isSongLime ? 'text-zinc-950 dark:text-[#C4FF00]' : '')
                                     : 'text-zinc-900 dark:text-white'
                                 }`}
+                                style={isPlayingThis && !isSongLime ? { color: songZoneColor } : undefined}
                               >
                                 {displayTitle}
                               </span>
 
-                              {/* 3-Bar Equalizer when playing */}
+                              {/* 3-Bar Equalizer when playing (synchronized with songZoneColor) */}
                               {isPlayingThis && (
                                 <div className="flex items-end gap-[2px] h-3 w-3 shrink-0 ml-0.5">
                                   <motion.span
-                                    className="w-0.5 bg-[#C4FF00] rounded-full"
+                                    className="w-0.5 rounded-full"
+                                    style={{ backgroundColor: songZoneColor }}
                                     animate={{ height: ['25%', '100%', '40%', '85%', '25%'] }}
                                     transition={{
                                       repeat: Infinity,
@@ -619,7 +642,8 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                                     }}
                                   />
                                   <motion.span
-                                    className="w-0.5 bg-[#C4FF00] rounded-full"
+                                    className="w-0.5 rounded-full"
+                                    style={{ backgroundColor: songZoneColor }}
                                     animate={{ height: ['85%', '30%', '100%', '50%', '85%'] }}
                                     transition={{
                                       repeat: Infinity,
@@ -629,7 +653,8 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                                     }}
                                   />
                                   <motion.span
-                                    className="w-0.5 bg-[#C4FF00] rounded-full"
+                                    className="w-0.5 rounded-full"
+                                    style={{ backgroundColor: songZoneColor }}
                                     animate={{ height: ['40%', '95%', '25%', '70%', '40%'] }}
                                     transition={{
                                       repeat: Infinity,
@@ -671,13 +696,22 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
 
                         {/* Right side: BPM Badge, Platform pill, Remove (X) */}
                         <div className="flex items-center gap-1.5 shrink-0 pl-1">
-                          {/* Song BPM Badge */}
+                          {/* Song BPM Badge synchronized with songZoneColor */}
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                               isExactOrClose
-                                ? 'bg-[#C4FF00] text-black border-[#C4FF00] shadow-xs'
+                                ? 'shadow-xs'
                                 : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
                             }`}
+                            style={
+                              isExactOrClose
+                                ? {
+                                    backgroundColor: songZoneColor,
+                                    color: isSongLime ? '#000000' : '#FFFFFF',
+                                    borderColor: songZoneColor,
+                                  }
+                                : undefined
+                            }
                           >
                             {songBpm} BPM
                           </span>
@@ -824,6 +858,8 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                 {recommendedSongs.map((song, index) => {
                   const songKey = song.normalized_key || song.title + song.artist;
                   const songBpm = getSongBpm(song);
+                  const recZoneColor = songBpm <= 130 ? '#C4FF00' : songBpm <= 160 ? '#3B82F6' : '#FF4B4B';
+                  const isRecLime = songBpm <= 130;
                   const isPlayingThis =
                     currentPlayingSong?.normalized_key === song.normalized_key && isPlayingAudio;
                   const isExactOrClose = Math.abs(songBpm - targetBpm) <= 2;
@@ -840,6 +876,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.15 }}
                       className="flex items-center justify-between p-3 gap-2 hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors"
+                      style={isPlayingThis ? { backgroundColor: `${recZoneColor}18` } : undefined}
                     >
                       {/* Thumbnail & Title */}
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -871,7 +908,10 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                             }`}
                           >
                             {isPlayingThis ? (
-                              <Pause className="w-3.5 h-3.5 fill-[#C4FF00] text-[#C4FF00]" />
+                              <Pause
+                                className="w-3.5 h-3.5 fill-current"
+                                style={{ color: recZoneColor }}
+                              />
                             ) : (
                               <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
                             )}
@@ -879,7 +919,16 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                         </button>
 
                         <div className="min-w-0 flex-1 pr-1">
-                          <div className="text-[13px] font-bold text-zinc-900 dark:text-white truncate">
+                          <div
+                            className={`text-[13px] font-bold truncate ${
+                              !isPlayingThis
+                                ? 'text-zinc-900 dark:text-white'
+                                : isRecLime
+                                ? 'text-zinc-950 dark:text-[#C4FF00]'
+                                : ''
+                            }`}
+                            style={isPlayingThis && !isRecLime ? { color: recZoneColor } : undefined}
+                          >
                             {recTitle}
                           </div>
                           <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
@@ -914,9 +963,18 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                             isExactOrClose
-                              ? 'bg-[#C4FF00] text-black border-[#C4FF00]'
+                              ? ''
                               : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
                           }`}
+                          style={
+                            isExactOrClose
+                              ? {
+                                  backgroundColor: recZoneColor,
+                                  color: isRecLime ? '#000000' : '#FFFFFF',
+                                  borderColor: recZoneColor,
+                                }
+                              : undefined
+                          }
                         >
                           {songBpm} BPM
                         </span>

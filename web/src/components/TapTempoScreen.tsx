@@ -355,9 +355,17 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
           type="button"
           disabled={!hasEnoughTaps}
           onClick={() => onConfirmBpm(currentEffectiveBpm)}
+          style={
+            hasEnoughTaps
+              ? {
+                  backgroundColor: activeColor,
+                  color: currentEffectiveBpm <= 130 ? '#000000' : '#FFFFFF',
+                }
+              : undefined
+          }
           className={`w-full py-4 px-6 rounded-full font-black text-base transition-all flex items-center justify-center gap-2 shadow-sm ${
             hasEnoughTaps
-              ? 'bg-[#C4FF00] hover:bg-[#B8F500] text-black active:scale-[0.98] cursor-pointer'
+              ? 'active:scale-[0.98] cursor-pointer'
               : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'
           }`}
         >

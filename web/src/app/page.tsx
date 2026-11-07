@@ -785,6 +785,12 @@ export default function Page() {
     setStep('category');
   };
 
+  // Synchronized active BPM & Zone Color for global chrome & floating docks
+  const activeBpm = currentPlayingSong
+    ? (currentPlayingSong.running_bpm || currentPlayingSong.raw_bpm || targetBpm)
+    : targetBpm;
+  const activeZoneColor = activeBpm <= 130 ? '#C4FF00' : activeBpm <= 160 ? '#3B82F6' : '#FF4B4B';
+
   return (
     <div className="min-h-screen w-full bg-zinc-200 dark:bg-[#070709] flex justify-center items-start transition-colors duration-200">
       {/* Centered Mobile Container strictly constrained on desktop */}
@@ -865,6 +871,7 @@ export default function Page() {
                 showToast={showToast}
                 lang={lang}
                 onToggleLang={handleToggleLang}
+                targetBpm={targetBpm}
               />
             )}
 
@@ -940,6 +947,7 @@ export default function Page() {
           hasActivePlaylist={playlist.length > 0}
           lang={lang}
           isDark={isDark}
+          activeZoneColor={activeZoneColor}
         />
       </div>
     </div>

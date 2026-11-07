@@ -18,6 +18,7 @@ interface CategoryScreenProps {
   showToast: (text: string, type?: 'info' | 'warning' | 'error') => void;
   lang?: AppLanguage;
   onToggleLang?: () => void;
+  targetBpm?: number;
 }
 
 interface CategoryItem {
@@ -82,10 +83,14 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   showToast,
   lang = 'ko',
   onToggleLang,
+  targetBpm = 160,
 }) => {
   const [shakingId, setShakingId] = useState<GenreTag | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const brandLogo = isDark ? '/logos/logo-dark.png' : '/logos/logo-green.png';
+
+  const zoneColor = targetBpm <= 130 ? '#C4FF00' : targetBpm <= 160 ? '#3B82F6' : '#FF4B4B';
+  const isLime = targetBpm <= 130;
 
   const handleCardClick = (catId: GenreTag) => {
     const isSelected = selectedCategories.includes(catId);
@@ -179,9 +184,17 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
           </div>
 
           <div
+            style={
+              count > 0
+                ? {
+                    backgroundColor: zoneColor,
+                    color: isLime ? '#000000' : '#FFFFFF',
+                  }
+                : undefined
+            }
             className={`px-3.5 py-1.5 rounded-full text-xs font-black shadow-sm tracking-wide transition-all duration-300 ${
               count > 0
-                ? 'bg-[#C4FF00] text-black'
+                ? ''
                 : 'bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400'
             }`}
           >
@@ -285,9 +298,17 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
           type="button"
           disabled={count === 0 || isGenerating}
           onClick={handleCreatePlaylist}
+          style={
+            count > 0
+              ? {
+                  backgroundColor: zoneColor,
+                  color: isLime ? '#000000' : '#FFFFFF',
+                }
+              : undefined
+          }
           className={`w-full py-4 px-6 rounded-full font-black text-base transition-all flex items-center justify-center gap-2 shadow-sm ${
             count > 0
-              ? 'bg-[#C4FF00] hover:bg-[#B8F500] text-black active:scale-[0.98] cursor-pointer'
+              ? 'active:scale-[0.98] cursor-pointer'
               : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'
           }`}
         >
