@@ -13,7 +13,6 @@ import {
   Plus,
   Sparkles,
   Music,
-  Zap,
   Rocket,
   ExternalLink,
   BookmarkCheck,
@@ -21,6 +20,8 @@ import {
   Edit2,
   Check,
   Share2,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { Song, GenreTag, AppLanguage, SavedPlaylist, getSongTitle, getSongArtist } from '@/types/song';
 import { getPlaylistCoverUrl, getSongBpm, getBpmZoneLabel } from '@/lib/playlistGenerator';
@@ -33,10 +34,9 @@ import {
   getBugsUrl,
 } from '@/lib/platformExport';
 import { ExportModal } from './ExportModal';
-import { ThemeToggle } from './ThemeToggle';
-import { playSuccessFanfare, playPopSound } from '@/lib/soundEffects';
+import { playSuccessFanfare } from '@/lib/soundEffects';
 
-interface PlaylistScreenProps {
+export interface PlaylistScreenProps {
   targetBpm: number;
   selectedCategories: GenreTag[];
   playlist: Song[];
@@ -90,7 +90,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
   recommendedSongs,
   currentPlayingSong,
   isPlayingAudio,
-  isContinuousPlay,
+  isContinuousPlay: _isContinuousPlay,
   onPlaySong,
   onToggleContinuousPlay,
   onRemoveSong,
@@ -127,11 +127,12 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
     }
   }, [initialPlaylistName]);
 
-  // Mandatory BPM Range Cover Image
+  // Mandatory BPM Range Cover Image & Zone metadata
   const coverUrl = getPlaylistCoverUrl(targetBpm);
   const zone = getBpmZoneLabel(targetBpm);
+  const zoneColor = targetBpm <= 130 ? '#C4FF00' : targetBpm <= 160 ? '#3B82F6' : '#FF4B4B';
 
-  // Total duration in minutes
+  // Total duration in minutes / hours
   const totalDurationSec = useMemo(() => {
     return playlist.reduce((sum, s) => sum + (s.duration_sec || 210), 0);
   }, [playlist]);
@@ -157,7 +158,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
         particleCount: 35,
         spread: 60,
         origin: { y: 0.35 },
-        colors: ['#C4FF00', '#00E5FF', '#FF0055', '#FFFFFF'],
+        colors: ['#C4FF00', '#3B82F6', '#FF4B4B', '#FFFFFF'],
         disableForReducedMotion: true,
       });
     } catch {
@@ -202,7 +203,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
           particleCount: 50,
           spread: 70,
           origin: { y: 0.4 },
-          colors: ['#C4FF00', '#00E5FF', '#FF0055', '#FFFFFF'],
+          colors: ['#C4FF00', '#3B82F6', '#FF4B4B', '#FFFFFF'],
         });
       } catch {
         // ignore
@@ -236,23 +237,30 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
     setExpandedSongKey((prev) => (prev === key ? null : key));
   };
 
-  return (
-    <div className="flex flex-col min-h-dvh pb-32">
-      {/* Sticky Top Bar */}
-      <header className="sticky top-0 z-30 grid grid-cols-3 items-center px-5 h-14 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-zinc-200/70 dark:border-zinc-900">
-        <div className="flex items-center justify-start">
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label={lang === 'ko' ? '뒤로 가기' : 'Back'}
-            className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 transition-colors cursor-pointer"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-        </div>
+  const genreSummaryText = useMemo(() => {
+    if (selectedCategories.length === 0) {
+      return lang === 'ko' ? '전체 장르' : 'All Genres';
+    }
+    return selectedCategories.map((c) => CATEGORY_NAMES[lang][c] || c).join(' · ');
+  }, [selectedCategories, lang]);
 
-        <div className="flex items-center justify-center gap-2">
-          <div className="relative w-6 h-6 rounded-md overflow-hidden border border-zinc-200 dark:border-zinc-800">
+  return (
+    <div className="flex flex-col min-h-dvh pb-40">
+      {/* 1. Top Floating Glass Navigation Bar (Screenshot 4 top corners) */}
+      <header className="sticky top-0 z-30 flex items-center justify-between px-5 pt-3 pb-2 bg-white/75 dark:bg-black/75 backdrop-blur-2xl border-b border-black/5 dark:border-white/5">
+        {/* Left: Circular liquid-glass Back button */}
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label={lang === 'ko' ? '뒤로 가기' : 'Back'}
+          className="w-10 h-10 rounded-full bg-zinc-200/80 dark:bg-zinc-800/85 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm cursor-pointer active:scale-95 transition-all"
+        >
+          <ChevronLeft className="w-5 h-5 -ml-0.5" />
+        </button>
+
+        {/* Center: Subtle PULSE branding */}
+        <div className="flex items-center gap-1.5 opacity-80">
+          <div className="relative w-5 h-5 rounded-md overflow-hidden">
             <Image
               src={isDark ? '/logos/logo-dark.png' : '/logos/logo-green.png'}
               alt="PULSE"
@@ -260,260 +268,306 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               className="object-cover"
             />
           </div>
-          <span className="font-black tracking-widest text-sm uppercase font-display text-zinc-900 dark:text-white">
+          <span className="font-black tracking-widest text-xs uppercase font-display text-zinc-900 dark:text-white">
             PULSE
           </span>
         </div>
 
-        <div />
+        {/* Right: Quick actions (Theme + Lang + Share/Export) */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            aria-label={isDark ? '라이트 모드로 전환' : '다크 모드로 전환'}
+            className="w-10 h-10 rounded-full bg-zinc-200/80 dark:bg-zinc-800/85 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm cursor-pointer active:scale-95 transition-all"
+          >
+            {isDark ? (
+              <Sun className="w-4 h-4 text-zinc-200 hover:text-[#C4FF00] transition-colors" />
+            ) : (
+              <Moon className="w-4 h-4 text-zinc-700 hover:text-zinc-900 transition-colors" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onToggleLang}
+            aria-label={lang === 'ko' ? 'Switch to English' : '한국어로 전환'}
+            className="w-10 h-10 rounded-full bg-zinc-200/80 dark:bg-zinc-800/85 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center text-[11px] font-black text-zinc-900 dark:text-white shadow-sm cursor-pointer active:scale-95 transition-all"
+          >
+            {lang === 'ko' ? 'EN' : '한'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsExportModalOpen(true)}
+            aria-label={lang === 'ko' ? '플레이리스트 공유 및 내보내기' : 'Export and share mix'}
+            className="w-10 h-10 rounded-full bg-zinc-200/80 dark:bg-zinc-800/85 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm cursor-pointer active:scale-95 transition-all"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
-      <main className="px-5 pt-4">
-        {/* Header Summary Card */}
-        <div className="relative p-5 rounded-3xl bg-zinc-100 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800 shadow-xl mb-6">
-          <div className="flex items-start gap-4">
-            {/* BPM-Matched Cover Image with pulse effect matching running cadence */}
-            <motion.div
-              animate={
-                isPlayingAudio
-                  ? {
-                      scale: [1, 1.03, 1],
-                      boxShadow: [
-                        '0 0 0 0 rgba(196, 255, 0, 0)',
-                        '0 0 24px 6px rgba(196, 255, 0, 0.4)',
-                        '0 0 0 0 rgba(196, 255, 0, 0)',
-                      ],
-                    }
-                  : { scale: 1, boxShadow: '0 0 0 0 rgba(0, 0, 0, 0)' }
-              }
-              transition={
-                isPlayingAudio
-                  ? {
-                      repeat: Infinity,
-                      duration: Math.max(0.35, 60 / targetBpm),
-                      ease: 'easeInOut',
-                    }
-                  : { duration: 0.3 }
-              }
-              className="relative w-28 h-28 rounded-2xl overflow-hidden shrink-0 shadow-lg border border-zinc-300 dark:border-zinc-700 bg-black cursor-pointer group"
-              onClick={onToggleContinuousPlay}
-              title={lang === 'ko' ? '클릭하여 연속 재생' : 'Click to toggle continuous play'}
-            >
-              <Image
-                src={coverUrl}
-                alt={`PULSE ${targetBpm} BPM Cover`}
-                fill
-                priority
-                className="object-cover transition-transform group-hover:scale-105"
-              />
+      <main className="px-5 pt-3">
+        {/* 2. Centered Hero Artwork + Floating Calendar-Style BPM Badge */}
+        <div className="relative w-44 h-44 mx-auto mt-2">
+          {/* Subtle ambient glow behind the hero based on BPM zone color */}
+          <div
+            className="absolute -inset-4 rounded-full blur-2xl opacity-45 dark:opacity-40 pointer-events-none transition-all duration-700"
+            style={{ backgroundColor: zoneColor }}
+          />
 
-              {/* Pulsing audio indicator badge */}
-              {isPlayingAudio && (
-                <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-black/80 backdrop-blur-sm border border-[#C4FF00]/60">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#C4FF00] animate-ping" />
-                  <span className="text-[9px] font-black text-[#C4FF00]">LIVE</span>
-                </div>
-              )}
-            </motion.div>
+          {/* Centered Circular Artwork */}
+          <motion.div
+            animate={
+              isPlayingAudio
+                ? {
+                    scale: [1, 1.025, 1],
+                    boxShadow: [
+                      `0 0 0 0 ${zoneColor}00`,
+                      `0 0 32px 8px ${zoneColor}66`,
+                      `0 0 0 0 ${zoneColor}00`,
+                    ],
+                  }
+                : { scale: 1, boxShadow: '0 20px 40px -15px rgba(0,0,0,0.45)' }
+            }
+            transition={
+              isPlayingAudio
+                ? {
+                    repeat: Infinity,
+                    duration: Math.max(0.35, 60 / targetBpm),
+                    ease: 'easeInOut',
+                  }
+                : { duration: 0.3 }
+            }
+            onClick={onToggleContinuousPlay}
+            className="w-44 h-44 rounded-full overflow-hidden shadow-2xl border-2 border-black/10 dark:border-white/15 relative group cursor-pointer bg-black"
+            title={lang === 'ko' ? '클릭하여 연속 재생' : 'Click to toggle continuous play'}
+          >
+            <Image
+              src={coverUrl}
+              alt={`PULSE ${targetBpm} BPM Cover`}
+              fill
+              priority
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+            />
 
-            {/* Meta details */}
-            <div className="flex-1 min-w-0">
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black text-[#C4FF00] dark:bg-[#C4FF00] dark:text-black text-[11px] font-black tracking-tight mb-1.5 shadow-sm">
-                <Zap className="w-3 h-3" />
-                <span>{targetBpm} BPM</span>
-              </div>
-
-              {/* Editable Playlist Title Bar */}
-              <div className="relative group/title mt-0.5">
-                {isEditingTitle ? (
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      autoFocus
-                      value={playlistTitle}
-                      onChange={(e) => setPlaylistTitle(e.target.value)}
-                      onBlur={() => setIsEditingTitle(false)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') setIsEditingTitle(false);
-                      }}
-                      className="w-full px-2 py-1 rounded-lg bg-white dark:bg-black border-2 border-[#C4FF00] text-sm font-black text-zinc-900 dark:text-white focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingTitle(false)}
-                      className="p-1 rounded-lg bg-[#C4FF00] text-black shrink-0"
-                    >
-                      <Check className="w-4 h-4 stroke-[3]" />
-                    </button>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => setIsEditingTitle(true)}
-                    className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
-                    title={lang === 'ko' ? '클릭하여 이름 수정' : 'Click to edit title'}
-                  >
-                    <h1 className="text-base font-black tracking-tight text-zinc-900 dark:text-white truncate">
-                      {playlistTitle}
-                    </h1>
-                    <Edit2 className="w-3.5 h-3.5 text-zinc-400 group-hover/title:text-[#C4FF00] shrink-0 transition-colors" />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-1 mt-2 mb-2">
-                {selectedCategories.map((cat) => (
-                  <span
-                    key={cat}
-                    className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
-                  >
-                    {CATEGORY_NAMES[lang][cat] || cat}
+            {/* Live pulsing audio indicator badge overlay */}
+            {isPlayingAudio && (
+              <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+                <div className="px-3 py-1 rounded-full bg-black/80 backdrop-blur-md border border-[#C4FF00]/70 flex items-center gap-1.5 shadow-xl">
+                  <span className="w-2 h-2 rounded-full bg-[#C4FF00] animate-ping" />
+                  <span className="text-[10px] font-black tracking-wider text-[#C4FF00]">
+                    PLAYING
                   </span>
-                ))}
-                {onOpenArtistSelect && (
-                  <button
-                    type="button"
-                    onClick={onOpenArtistSelect}
-                    className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#C4FF00]/20 hover:bg-[#C4FF00]/30 border border-[#C4FF00]/50 text-lime-800 dark:text-[#C4FF00] cursor-pointer transition-colors"
-                  >
-                    {preferredArtists.length > 0
-                      ? lang === 'ko'
-                        ? `🫧 최애 ${preferredArtists.length}팀 반영됨`
-                        : `🫧 ${preferredArtists.length} Artists`
-                      : lang === 'ko'
-                      ? '🫧 아티스트 취향 설정'
-                      : '🫧 Pick Artists'}
-                  </button>
-                )}
+                </div>
               </div>
+            )}
+          </motion.div>
 
-              <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+          {/* Floating Calendar-Style Badge in bottom-right corner (Screenshot 4 Sep / 30 replica) */}
+          <div className="absolute -bottom-1 -right-1 w-16 h-16 rounded-[18px] bg-zinc-950/95 dark:bg-black/95 border border-white/15 shadow-xl flex flex-col items-center justify-center leading-none z-10 pointer-events-none">
+            <span
+              className="text-[10px] font-black uppercase tracking-wider"
+              style={{ color: zoneColor }}
+            >
+              BPM
+            </span>
+            <span className="text-[24px] font-black text-white tracking-tight mt-0.5 font-display">
+              {targetBpm}
+            </span>
+          </div>
+        </div>
+
+        {/* Centered Bold Title (Screenshot 4 Bruno Mars style) */}
+        <div className="mt-5 text-center px-4">
+          {isEditingTitle ? (
+            <div className="inline-flex items-center gap-2 max-w-full">
+              <input
+                type="text"
+                autoFocus
+                value={playlistTitle}
+                onChange={(e) => setPlaylistTitle(e.target.value)}
+                onBlur={() => setIsEditingTitle(false)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') setIsEditingTitle(false);
+                }}
+                className="px-3 py-1 rounded-xl bg-white dark:bg-zinc-900 border-2 border-[#C4FF00] text-[20px] font-black text-zinc-900 dark:text-white focus:outline-none text-center shadow-lg"
+              />
+              <button
+                type="button"
+                onClick={() => setIsEditingTitle(false)}
+                className="p-1.5 rounded-xl bg-[#C4FF00] text-black shrink-0 cursor-pointer shadow-md"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+              </button>
+            </div>
+          ) : (
+            <div
+              onClick={() => setIsEditingTitle(true)}
+              className="group inline-flex items-center justify-center gap-2 cursor-pointer hover:opacity-85 transition-opacity max-w-full"
+              title={lang === 'ko' ? '클릭하여 이름 수정' : 'Click to edit title'}
+            >
+              <h1 className="text-[26px] font-black tracking-tight text-zinc-900 dark:text-white leading-tight truncate">
+                {playlistTitle}
+              </h1>
+              <Edit2 className="w-4 h-4 text-zinc-400 group-hover:text-[#C4FF00] shrink-0 transition-colors" />
+            </div>
+          )}
+        </div>
+
+        {/* 3. Two Side-by-Side Capsule Action Buttons (Screenshot 4 [ Get Tickets ] & [ ▶ Set List ]) */}
+        <div className="grid grid-cols-2 gap-3 mt-5">
+          {/* Left Capsule Button — Export Mix */}
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            type="button"
+            onClick={() => setIsExportModalOpen(true)}
+            className="py-3.5 px-4 rounded-full bg-zinc-200/90 dark:bg-zinc-800/90 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white font-bold text-[13px] flex items-center justify-center gap-2 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-sm cursor-pointer transition-all active:scale-95"
+          >
+            <Rocket className="w-4 h-4 text-zinc-800 dark:text-[#C4FF00] shrink-0" />
+            <span className="truncate">{lang === 'ko' ? '플리 내보내기' : 'Export Mix'}</span>
+          </motion.button>
+
+          {/* Right Capsule Button — Play Set List (Continuous Play) */}
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            type="button"
+            onClick={onToggleContinuousPlay}
+            className={`py-3.5 px-4 rounded-full font-black text-[13px] flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all active:scale-95 ${
+              isPlayingAudio
+                ? 'bg-zinc-950 text-[#C4FF00] border-2 border-[#C4FF00] shadow-[#C4FF00]/25 shadow-lg ring-1 ring-[#C4FF00]/50'
+                : 'bg-[#C4FF00] hover:bg-[#B5F000] text-black'
+            }`}
+          >
+            {isPlayingAudio ? (
+              <>
+                <Pause className="w-4 h-4 fill-current shrink-0" />
+                <span className="truncate">{lang === 'ko' ? '일시 정지' : 'Pause Mix'}</span>
+                <div className="flex items-end gap-[2px] h-3 ml-0.5 shrink-0">
+                  <span className="w-0.5 bg-[#C4FF00] h-full animate-bounce" />
+                  <span className="w-0.5 bg-[#C4FF00] h-2/3 animate-bounce [animation-delay:0.15s]" />
+                  <span className="w-0.5 bg-[#C4FF00] h-4/5 animate-bounce [animation-delay:0.3s]" />
+                </div>
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4 fill-current ml-0.5 shrink-0" />
+                <span className="truncate">{lang === 'ko' ? '연속 재생' : 'Play Mix'}</span>
+              </>
+            )}
+          </motion.button>
+        </div>
+
+        {/* 4. Apple HIG Inset Grouped Metadata Card (Screenshot 4 30 September / Sofi Stadium card) */}
+        <div className="mt-5 rounded-[24px] bg-zinc-100/90 dark:bg-zinc-900/85 backdrop-blur-xl border border-black/5 dark:border-white/10 p-4 divide-y divide-zinc-200/80 dark:divide-zinc-800/80 shadow-sm">
+          {/* Row 1 (Cadence & Duration + Save to Feed Circular Button) */}
+          <div className="pb-3.5 flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-[14px] font-bold text-zinc-900 dark:text-white truncate">
+                {targetBpm} BPM · {zone.label}
+              </div>
+              <div className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
                 {playlist.length}
-                {lang === 'ko' ? '곡' : ' tracks'} · 약 {durationFormatted}
+                {lang === 'ko' ? '곡 수록' : ' tracks'} ·{' '}
+                {lang === 'ko' ? `약 ${durationFormatted} 러닝 코스` : `${durationFormatted} running session`}
               </div>
             </div>
-          </div>
 
-          {/* Continuous Playback Button (Full Width) */}
-          <div className="mt-4 pt-3 border-t border-zinc-200/80 dark:border-zinc-800">
             <button
               type="button"
-              onClick={onToggleContinuousPlay}
-              className={`w-full py-3 px-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2 active:scale-98 transition-all shadow-md cursor-pointer ${
-                isPlayingAudio
-                  ? 'bg-zinc-900 text-[#C4FF00] dark:bg-zinc-800 dark:text-[#C4FF00] border border-[#C4FF00]/50 ring-1 ring-[#C4FF00]/30'
-                  : 'bg-zinc-900 text-white dark:bg-white dark:text-black hover:opacity-95'
+              onClick={handleSaveToFeed}
+              disabled={isSavingToFeed}
+              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 cursor-pointer transition-transform active:scale-95 border ${
+                hasSavedToFeed
+                  ? 'bg-[#C4FF00]/15 border-[#C4FF00]/40 text-[#C4FF00]'
+                  : 'bg-zinc-200/80 dark:bg-zinc-800 border-black/5 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white'
               }`}
+              title={
+                hasSavedToFeed
+                  ? lang === 'ko'
+                    ? '피드에 저장됨'
+                    : 'Saved to feed'
+                  : lang === 'ko'
+                  ? '피드에 저장'
+                  : 'Save to feed'
+              }
             >
-              {isPlayingAudio ? (
-                <>
-                  <Pause className="w-4 h-4 fill-current" />
-                  <span>
-                    {lang === 'ko' ? '연속 재생 일시 정지' : 'Pause Non-stop Play'}
-                  </span>
-                  <div className="flex items-end gap-[2px] h-3 ml-1.5">
-                    <span className="w-0.5 bg-[#C4FF00] h-full animate-bounce" />
-                    <span className="w-0.5 bg-[#C4FF00] h-2/3 animate-bounce [animation-delay:0.15s]" />
-                    <span className="w-0.5 bg-[#C4FF00] h-4/5 animate-bounce [animation-delay:0.3s]" />
-                  </div>
-                </>
+              {hasSavedToFeed ? (
+                <BookmarkCheck className="w-4 h-4 text-lime-600 dark:text-[#C4FF00]" />
               ) : (
-                <>
-                  <Play className="w-4 h-4 fill-current ml-0.5" />
-                  <span>
-                    {lang === 'ko'
-                      ? `${playlist.length}곡 연속 논스톱 프리뷰 재생`
-                      : `Play ${playlist.length} Tracks Non-stop Preview`}
-                  </span>
-                </>
+                <BookmarkPlus className="w-4 h-4" />
               )}
             </button>
           </div>
 
-          {/* Action Buttons Row: Save to Feed + Export (Neon CTA) + Reshuffle */}
-          <div className="grid grid-cols-3 gap-2 mt-2.5">
-            {/* 💾 Save to Feed Button */}
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              type="button"
-              onClick={handleSaveToFeed}
-              disabled={isSavingToFeed}
-              className={`py-2.5 px-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition-all shadow-sm cursor-pointer border ${
-                hasSavedToFeed
-                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 text-zinc-900 dark:text-white'
-              }`}
-              title={lang === 'ko' ? '홈 피드에 저장' : 'Save to community feed'}
-            >
-              {hasSavedToFeed ? (
-                <BookmarkCheck className="w-3.5 h-3.5 text-emerald-500" />
-              ) : (
-                <BookmarkPlus className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
-              )}
-              <span className="truncate">
-                {hasSavedToFeed
+          {/* Row 2 (Genres & Artist Taste + Reshuffle & Artist Select Circular Buttons) */}
+          <div className="pt-3.5 flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-[14px] font-bold text-zinc-900 dark:text-white truncate">
+                {genreSummaryText}
+              </div>
+              <div className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
+                {preferredArtists.length > 0
                   ? lang === 'ko'
-                    ? '피드 저장됨'
-                    : 'Saved'
+                    ? `최애 아티스트 ${preferredArtists.length}팀 취향 반영됨`
+                    : `${preferredArtists.length} favorite artists active`
                   : lang === 'ko'
-                  ? '피드에 저장'
-                  : 'Save to Feed'}
-              </span>
-            </motion.button>
+                  ? '아티스트 취향 버블 설정하기'
+                  : 'Customize favorite artists'}
+              </div>
+            </div>
 
-            {/* 🚀 Prominent Neon CTA Button */}
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              type="button"
-              onClick={() => setIsExportModalOpen(true)}
-              className="py-2.5 px-2 rounded-xl bg-[#C4FF00] hover:bg-[#B4F000] text-black text-xs font-black flex items-center justify-center gap-1 shadow-lg shadow-[#C4FF00]/20 transition-all border border-[#B0EC00] cursor-pointer"
-            >
-              <Rocket className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">
-                {lang === 'ko' ? '플리 내보내기' : 'Export'}
-              </span>
-            </motion.button>
+            <div className="flex items-center gap-2 shrink-0">
+              {onOpenArtistSelect && (
+                <button
+                  type="button"
+                  onClick={onOpenArtistSelect}
+                  className="w-9 h-9 rounded-full bg-zinc-200/80 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 border border-black/5 dark:border-white/10 flex items-center justify-center text-zinc-700 dark:text-zinc-300 hover:text-[#C4FF00] cursor-pointer transition-transform active:scale-95"
+                  title={lang === 'ko' ? '최애 아티스트 취향 설정' : 'Pick favorite artists'}
+                >
+                  <Sparkles className="w-4 h-4" />
+                </button>
+              )}
 
-            {/* Reshuffle Button with spinning icon */}
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              type="button"
-              onClick={handleReshuffleClick}
-              className="py-2.5 px-2 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-600 text-zinc-900 dark:text-white text-xs font-bold flex items-center justify-center gap-1 transition-all shadow-sm cursor-pointer"
-            >
-              <motion.div
-                animate={isShuffling ? { rotate: 360 } : { rotate: 0 }}
-                transition={{ duration: 0.6, ease: 'easeInOut' }}
+              <button
+                type="button"
+                onClick={handleReshuffleClick}
+                disabled={isShuffling}
+                className="w-9 h-9 rounded-full bg-zinc-200/80 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 border border-black/5 dark:border-white/10 flex items-center justify-center text-zinc-700 dark:text-zinc-300 hover:text-[#C4FF00] cursor-pointer transition-transform active:scale-95"
+                title={lang === 'ko' ? '트랙 순서 새로고침' : 'Reshuffle mix'}
               >
-                <RotateCw className="w-3.5 h-3.5 text-zinc-600 dark:text-[#C4FF00]" />
-              </motion.div>
-              <span className="truncate">
-                {lang === 'ko' ? '다시 섞기' : 'Reshuffle'}
-              </span>
-            </motion.button>
+                <motion.div
+                  animate={isShuffling ? { rotate: 360 } : { rotate: 0 }}
+                  transition={{ duration: 0.6, ease: 'easeInOut' }}
+                >
+                  <RotateCw className="w-4 h-4" />
+                </motion.div>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* 30-Song Playlist Tracklist Section */}
-        <section className="mb-8">
+        {/* Subtle Footnote below Card (Screenshot 4 Powered by Bandsintown style) */}
+        <p className="text-center text-[11px] font-medium text-zinc-400 dark:text-zinc-500 mt-2">
+          Powered by PULSE Cadence Engine
+        </p>
+
+        {/* 5. Cadence Set List Section & Apple HIG Hairline Tracklist */}
+        <section className="mt-7">
           <div className="flex items-center justify-between mb-3 px-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-black text-zinc-900 dark:text-white">
-                {lang === 'ko' ? '플레이리스트 트랙' : 'Playlist Tracks'}
-              </h2>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-                {playlist.length}
-                {lang === 'ko' ? '곡' : ' tracks'}
-              </span>
-            </div>
-            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">
-              {lang === 'ko' ? '각 곡 플랫폼 바로가기 지원' : 'Direct platform links'}
+            <h2 className="text-[19px] font-black tracking-tight text-zinc-900 dark:text-white">
+              {lang === 'ko' ? '케이던스 셋리스트' : 'Cadence Set List'}
+            </h2>
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-zinc-200/80 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300">
+              {playlist.length} {lang === 'ko' ? '곡' : 'tracks'}
             </span>
           </div>
 
           {playlist.length === 0 ? (
-            <div className="p-8 rounded-3xl bg-zinc-100 dark:bg-zinc-900/50 text-center border border-dashed border-zinc-300 dark:border-zinc-800">
-              <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400 mb-2">
+            <div className="p-8 rounded-[24px] bg-zinc-100/70 dark:bg-zinc-900/40 text-center border border-dashed border-zinc-300 dark:border-zinc-800">
+              <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400 mb-3">
                 {lang === 'ko'
                   ? `선택한 장르에 ${targetBpm} ± 2 BPM 곡이 없어요`
                   : `No tracks found in ${targetBpm} ± 2 BPM`}
@@ -521,13 +575,13 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               <button
                 type="button"
                 onClick={onBack}
-                className="px-4 py-2 rounded-xl bg-[#C4FF00] text-black text-xs font-black shadow-md cursor-pointer"
+                className="px-4 py-2 rounded-full bg-[#C4FF00] text-black text-xs font-black shadow-md cursor-pointer active:scale-95 transition-transform"
               >
                 {lang === 'ko' ? '다른 장르나 BPM 선택하기' : 'Pick another genre or BPM'}
               </button>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="rounded-[24px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-sm overflow-hidden divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
               <AnimatePresence mode="popLayout">
                 {playlist.map((song, index) => {
                   const songKey = song.normalized_key || song.title + song.artist;
@@ -545,21 +599,21 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                     <motion.div
                       key={songKey}
                       layout
-                      initial={{ opacity: 0, y: 15 }}
+                      initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -60, scale: 0.95 }}
-                      transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-                      className={`flex flex-col rounded-2xl border transition-all duration-150 overflow-hidden ${
+                      exit={{ opacity: 0, x: -50, scale: 0.95 }}
+                      transition={{ type: 'spring', damping: 26, stiffness: 360 }}
+                      className={`flex flex-col transition-colors duration-150 ${
                         isPlayingThis
-                          ? 'bg-[#C4FF00]/10 dark:bg-[#C4FF00]/15 border-[#C4FF00] shadow-md ring-1 ring-[#C4FF00]/40'
-                          : 'bg-white dark:bg-zinc-900/80 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                          ? 'bg-[#C4FF00]/10 dark:bg-[#C4FF00]/15'
+                          : 'hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40'
                       }`}
                     >
                       {/* Main Song Row */}
-                      <div className="flex items-center justify-between p-2.5">
+                      <div className="flex items-center justify-between p-3 gap-2">
                         {/* Index & Cover */}
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <span className="w-5 text-center text-[11px] font-bold text-zinc-400 dark:text-zinc-500 shrink-0">
+                          <span className="w-5 text-center text-[12px] font-bold text-zinc-400 dark:text-zinc-500 shrink-0">
                             {index + 1}
                           </span>
 
@@ -568,7 +622,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                             type="button"
                             onClick={() => onPlaySong(song)}
                             aria-label={`${displayTitle} 미리듣기 재생`}
-                            className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 group cursor-pointer"
+                            className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 group cursor-pointer shadow-sm"
                           >
                             {song.cover_url ? (
                               <Image
@@ -587,7 +641,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                             <div
                               className={`absolute inset-0 flex items-center justify-center bg-black/40 transition-opacity ${
                                 isPlayingThis
-                                  ? 'opacity-100 bg-black/55'
+                                  ? 'opacity-100 bg-black/60'
                                   : 'opacity-0 group-hover:opacity-100'
                               }`}
                             >
@@ -603,9 +657,9 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                           <div className="min-w-0 flex-1 pr-1">
                             <div className="flex items-center gap-1.5">
                               <span
-                                className={`text-xs font-bold truncate ${
+                                className={`text-[13px] font-bold truncate ${
                                   isPlayingThis
-                                    ? 'text-[#0A0A0A] dark:text-[#C4FF00]'
+                                    ? 'text-zinc-950 dark:text-[#C4FF00]'
                                     : 'text-zinc-900 dark:text-white'
                                 }`}
                               >
@@ -659,7 +713,8 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                                   {lang === 'ko' ? '🔗 연관' : '🔗 Vibe'}
                                 </span>
                               )}
-                              {((song.popularity_score ?? 0) >= 88 || (song.artist_track_rank ?? 99) <= 5) && (
+                              {((song.popularity_score ?? 0) >= 88 ||
+                                (song.artist_track_rank ?? 99) <= 5) && (
                                 <span className="px-1.5 py-0.2 rounded bg-rose-500/15 text-rose-500 dark:text-rose-400 border border-rose-500/30 text-[9px] font-black shrink-0">
                                   {lang === 'ko' ? '🔥 인기' : '🔥 HOT'}
                                 </span>
@@ -673,7 +728,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                           </div>
                         </div>
 
-                        {/* Right side: Platform pill, BPM Badge, Remove (X) */}
+                        {/* Right side: BPM Badge, Platform pill, Remove (X) */}
                         <div className="flex items-center gap-1.5 shrink-0 pl-1">
                           {/* Song BPM Badge */}
                           <span
@@ -721,7 +776,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.2 }}
-                            className="bg-zinc-50 dark:bg-zinc-950/70 border-t border-zinc-200/80 dark:border-zinc-800 px-3 py-2 flex items-center justify-between gap-1 overflow-x-auto text-[10px] font-bold"
+                            className="bg-zinc-50 dark:bg-zinc-950/80 border-t border-zinc-200/70 dark:border-zinc-800/70 px-3.5 py-2 flex items-center justify-between gap-1 overflow-x-auto text-[10px] font-bold"
                           >
                             <span className="text-[10px] text-zinc-500 dark:text-zinc-400 shrink-0 mr-1">
                               {lang === 'ko' ? '바로듣기:' : 'Listen:'}
@@ -787,13 +842,13 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
           )}
         </section>
 
-        {/* Recommended Songs & Add to Playlist Section */}
-        <section className="mt-8 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+        {/* 6. Recommended Tracks & Add to Playlist Section (Apple HIG Hairline Styling) */}
+        <section className="mt-8">
           <div className="flex items-center justify-between mb-3 px-1">
             <div>
               <div className="flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-[#0A0A0A] dark:text-[#C4FF00]" />
-                <h3 className="text-sm font-black text-zinc-900 dark:text-white">
+                <Sparkles className="w-4 h-4 text-lime-600 dark:text-[#C4FF00]" />
+                <h3 className="text-[16px] font-black tracking-tight text-zinc-900 dark:text-white">
                   {lang === 'ko' ? '곡 추가 / 추천곡' : 'Recommended Tracks'}
                 </h3>
               </div>
@@ -807,15 +862,15 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
             <button
               type="button"
               onClick={onRefreshRecommendations}
-              className="py-1.5 px-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-bold flex items-center gap-1 shrink-0 transition-colors active:scale-95 cursor-pointer"
+              className="py-1.5 px-3 rounded-full bg-zinc-200/80 dark:bg-zinc-800/85 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-bold flex items-center gap-1 shrink-0 transition-colors active:scale-95 cursor-pointer"
             >
               <RotateCw className="w-3 h-3" />
-              <span>{lang === 'ko' ? '다른 곡 보기' : 'Refresh'}</span>
+              <span>{lang === 'ko' ? '새로고침' : 'Refresh'}</span>
             </button>
           </div>
 
           {recommendedSongs.length === 0 ? (
-            <div className="p-5 rounded-2xl bg-zinc-100/70 dark:bg-zinc-900/40 text-center border border-dashed border-zinc-200 dark:border-zinc-800">
+            <div className="p-6 rounded-[24px] bg-zinc-100/70 dark:bg-zinc-900/40 text-center border border-dashed border-zinc-200 dark:border-zinc-800">
               <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
                 {lang === 'ko'
                   ? `현재 선택한 장르의 ${targetBpm} ± 2 BPM 곡이 모두 플레이리스트에 담겨 있어요`
@@ -823,7 +878,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="rounded-[24px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-sm overflow-hidden divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
               <AnimatePresence mode="popLayout">
                 {recommendedSongs.map((song, index) => {
                   const songKey = song.normalized_key || song.title + song.artist;
@@ -838,11 +893,11 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                     <motion.div
                       key={`rec-${songKey}-${index}`}
                       layout
-                      initial={{ opacity: 0, scale: 0.95 }}
+                      initial={{ opacity: 0, scale: 0.96 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.85 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
                       transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-                      className="flex items-center justify-between p-2.5 rounded-2xl bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all"
+                      className="flex items-center justify-between p-3 gap-2 hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors"
                     >
                       {/* Thumbnail & Title */}
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -850,7 +905,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                           type="button"
                           onClick={() => onPlaySong(song)}
                           aria-label={`${recTitle} 미리듣기 재생`}
-                          className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 group cursor-pointer"
+                          className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 group cursor-pointer shadow-sm"
                         >
                           {song.cover_url ? (
                             <Image
@@ -869,12 +924,12 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                           <div
                             className={`absolute inset-0 flex items-center justify-center bg-black/40 transition-opacity ${
                               isPlayingThis
-                                ? 'opacity-100 bg-black/50'
+                                ? 'opacity-100 bg-black/55'
                                 : 'opacity-0 group-hover:opacity-100'
                             }`}
                           >
                             {isPlayingThis ? (
-                              <Pause className="w-3.5 h-3.5 fill-white text-white" />
+                              <Pause className="w-3.5 h-3.5 fill-[#C4FF00] text-[#C4FF00]" />
                             ) : (
                               <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
                             )}
@@ -882,7 +937,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                         </button>
 
                         <div className="min-w-0 flex-1 pr-1">
-                          <div className="text-xs font-bold text-zinc-900 dark:text-white truncate">
+                          <div className="text-[13px] font-bold text-zinc-900 dark:text-white truncate">
                             {recTitle}
                           </div>
                           <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
@@ -896,7 +951,8 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                                 {lang === 'ko' ? '🔗 연관' : '🔗 Vibe'}
                               </span>
                             )}
-                            {((song.popularity_score ?? 0) >= 88 || (song.artist_track_rank ?? 99) <= 5) && (
+                            {((song.popularity_score ?? 0) >= 88 ||
+                              (song.artist_track_rank ?? 99) <= 5) && (
                               <span className="px-1.5 py-0.2 rounded bg-rose-500/15 text-rose-500 dark:text-rose-400 border border-rose-500/30 text-[9px] font-black shrink-0">
                                 {lang === 'ko' ? '🔥 인기' : '🔥 HOT'}
                               </span>
@@ -927,7 +983,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                           type="button"
                           onClick={() => onAddSong(song)}
                           aria-label={`${recTitle} 플레이리스트에 추가`}
-                          className="p-1.5 rounded-xl bg-zinc-100 hover:bg-[#C4FF00] hover:text-black dark:bg-zinc-800 dark:hover:bg-[#C4FF00] dark:hover:text-black text-zinc-700 dark:text-zinc-300 transition-all shadow-sm cursor-pointer"
+                          className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-[#C4FF00] hover:text-black dark:bg-zinc-800 dark:hover:bg-[#C4FF00] dark:hover:text-black text-zinc-700 dark:text-zinc-300 flex items-center justify-center transition-all shadow-sm cursor-pointer"
                         >
                           <Plus className="w-4 h-4" />
                         </motion.button>

@@ -12,9 +12,10 @@ import { CategoryScreen } from '@/components/CategoryScreen';
 import { ArtistSelectScreen } from '@/components/ArtistSelectScreen';
 import { PlaylistScreen } from '@/components/PlaylistScreen';
 import { MiniPlayerDock } from '@/components/MiniPlayerDock';
+import { BottomTabBar, AppStep } from '@/components/BottomTabBar';
 import { Toast, ToastMessage } from '@/components/Toast';
 
-type Step = 'home' | 'bpm' | 'tap' | 'category' | 'artists' | 'playlist';
+type Step = AppStep;
 
 // Set once the user has finished (or skipped) the first-visit artist onboarding
 const ARTIST_ONBOARDED_KEY = 'pulse_artists_onboarded';
@@ -93,13 +94,16 @@ export default function Page() {
   }, [lang]);
 
   // Toast notification helper
-  const showToast = useCallback((text: string, type: 'info' | 'success' | 'warning' = 'info') => {
-    setToast({
-      id: `${Date.now()}-${Math.random()}`,
-      text,
-      type,
-    });
-  }, []);
+  const showToast = useCallback(
+    (text: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+      setToast({
+        id: `${Date.now()}-${Math.random()}`,
+        text,
+        type: type === 'error' ? 'warning' : type,
+      });
+    },
+    []
+  );
 
   // Initialize theme from localStorage & document class
   useEffect(() => {
@@ -528,21 +532,34 @@ export default function Page() {
     }
   };
 
-  // Next song in playlist
+  // Next song in playlist (or start playlist if idle)
   const handlePlayNextSong = () => {
-    if (!playlist.length) return;
-    const current = currentPlayingSongRef.current;
-    if (!current) {
-      playTrackInternal(playlist[0]);
-      return;
-    }
-    const currentKey = current.normalized_key || current.title + current.artist;
-    const idx = playlist.findIndex((s) => (s.normalized_key || s.title + s.artist) === currentKey);
+    if (playlist.length > 0) {
+      const current = currentPlayingSongRef.current;
+      if (!current) {
+        playTrackInternal(playlist[0]);
+        return;
+      }
+      const currentKey = current.normalized_key || current.title + current.artist;
+      const idx = playlist.findIndex((s) => (s.normalized_key || s.title + s.artist) === currentKey);
 
-    if (idx !== -1 && idx + 1 < playlist.length) {
-      playTrackInternal(playlist[idx + 1]);
-    } else if (playlist.length > 0) {
-      playTrackInternal(playlist[0]);
+      if (idx !== -1 && idx + 1 < playlist.length) {
+        playTrackInternal(playlist[idx + 1]);
+      } else {
+        playTrackInternal(playlist[0]);
+      }
+    } else if (allSongs.length > 0) {
+      const newPlaylist = generatePlaylist(allSongs, targetBpm, selectedCategories, preferredArtists);
+      if (newPlaylist.length > 0) {
+        setPlaylist(newPlaylist);
+        setRecommendedSongs(
+          getRecommendedSongs(allSongs, targetBpm, selectedCategories, newPlaylist, 8, preferredArtists)
+        );
+        setCustomPlaylistName(
+          lang === 'ko' ? `PULSE ${targetBpm} BPM 러닝 믹스` : `PULSE ${targetBpm} BPM Mix`
+        );
+        playTrackInternal(newPlaylist[0]);
+      }
     }
   };
 
@@ -565,7 +582,31 @@ export default function Page() {
   };
 
   const handleToggleMiniPlayerPlay = () => {
-    if (!audioRef.current || !currentPlayingSong) return;
+    if (!audioRef.current) return;
+
+    if (!currentPlayingSong) {
+      // Idle state: play from current playlist or auto-generate
+      if (playlist.length > 0) {
+        playTrackInternal(playlist[0]);
+        return;
+      }
+      if (allSongs.length > 0) {
+        const newPlaylist = generatePlaylist(allSongs, targetBpm, selectedCategories, preferredArtists);
+        if (newPlaylist.length > 0) {
+          setPlaylist(newPlaylist);
+          setRecommendedSongs(
+            getRecommendedSongs(allSongs, targetBpm, selectedCategories, newPlaylist, 8, preferredArtists)
+          );
+          setCustomPlaylistName(
+            lang === 'ko' ? `PULSE ${targetBpm} BPM 러닝 믹스` : `PULSE ${targetBpm} BPM Mix`
+          );
+          playTrackInternal(newPlaylist[0]);
+          return;
+        }
+      }
+      return;
+    }
+
     if (isPlayingAudio) {
       audioRef.current.pause();
       setIsPlayingAudio(false);
@@ -580,6 +621,44 @@ export default function Page() {
     }
     setIsPlayingAudio(false);
     setCurrentPlayingSong(null);
+  };
+
+  // BottomTabBar step switch handler
+  const handleSelectTabStep = (nextStep: AppStep) => {
+    if (nextStep === 'playlist') {
+      if (playlist.length === 0 && allSongs.length > 0) {
+        const newPlaylist = generatePlaylist(allSongs, targetBpm, selectedCategories, preferredArtists);
+        const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, newPlaylist, 8, preferredArtists);
+        setPlaylist(newPlaylist);
+        setRecommendedSongs(recs);
+        setCustomPlaylistName(
+          lang === 'ko' ? `PULSE ${targetBpm} BPM 러닝 믹스` : `PULSE ${targetBpm} BPM Mix`
+        );
+      }
+      setStep('playlist');
+      return;
+    }
+
+    if (nextStep === 'artists') {
+      handleOpenArtistEdit(step);
+      return;
+    }
+
+    setStep(nextStep);
+  };
+
+  // Open playlist from mini-player click
+  const handleOpenPlaylistFromMiniPlayer = () => {
+    if (playlist.length === 0 && allSongs.length > 0) {
+      const newPlaylist = generatePlaylist(allSongs, targetBpm, selectedCategories, preferredArtists);
+      const recs = getRecommendedSongs(allSongs, targetBpm, selectedCategories, newPlaylist, 8, preferredArtists);
+      setPlaylist(newPlaylist);
+      setRecommendedSongs(recs);
+      setCustomPlaylistName(
+        lang === 'ko' ? `PULSE ${targetBpm} BPM 러닝 믹스` : `PULSE ${targetBpm} BPM Mix`
+      );
+    }
+    setStep('playlist');
   };
 
   // Category toggle handler (max 3)
@@ -709,7 +788,7 @@ export default function Page() {
   return (
     <div className="min-h-screen w-full bg-zinc-200 dark:bg-[#070709] flex justify-center items-start transition-colors duration-200">
       {/* Centered Mobile Container strictly constrained on desktop */}
-      <div className="max-w-[430px] w-full mx-auto min-h-dvh shadow-2xl border-x border-zinc-300/80 dark:border-zinc-800/80 bg-white dark:bg-[#000000] relative flex flex-col">
+      <div className="max-w-[430px] w-full mx-auto min-h-dvh shadow-2xl border-x border-zinc-300/80 dark:border-zinc-800/80 bg-white dark:bg-[#000000] relative flex flex-col pb-36">
         {/* Global In-App Toast */}
         <Toast toast={toast} onClose={() => setToast(null)} />
 
@@ -737,6 +816,11 @@ export default function Page() {
                 communityPlaylists={communityPlaylists}
                 onLikePlaylist={handleLikePlaylist}
                 totalSongsCount={allSongs.length || 22019}
+                onSelectSongPreview={handlePlaySong}
+                preferredArtists={preferredArtists}
+                allSongs={allSongs}
+                currentPlayingSong={currentPlayingSong}
+                isPlayingAudio={isPlayingAudio}
               />
             )}
 
@@ -830,20 +914,29 @@ export default function Page() {
         </AnimatePresence>
         )}
 
-        {/* Floating Mini Player Dock (visible on any screen when audio is active) */}
-        {currentPlayingSong && (
-          <MiniPlayerDock
-            currentSong={currentPlayingSong}
-            isPlaying={isPlayingAudio}
-            currentTime={currentTime}
-            duration={duration}
-            onTogglePlay={handleToggleMiniPlayerPlay}
-            onClose={handleCloseMiniPlayer}
-            onNext={handlePlayNextSong}
-            onPrev={handlePlayPrevSong}
-            lang={lang}
-          />
-        )}
+        {/* Floating Mini Player Capsule (always visible in Apple Music iOS 26 style) */}
+        <MiniPlayerDock
+          currentSong={currentPlayingSong}
+          isPlaying={isPlayingAudio}
+          currentTime={currentTime}
+          duration={duration}
+          onTogglePlay={handleToggleMiniPlayerPlay}
+          onClose={handleCloseMiniPlayer}
+          onNext={handlePlayNextSong}
+          onPrev={handlePlayPrevSong}
+          lang={lang}
+          onOpenPlaylist={handleOpenPlaylistFromMiniPlayer}
+          targetBpm={targetBpm}
+        />
+
+        {/* Floating Liquid-Glass Bottom Tab Bar (Apple Music iOS 26 style) */}
+        <BottomTabBar
+          activeStep={step}
+          onSelectStep={handleSelectTabStep}
+          hasActivePlaylist={playlist.length > 0}
+          lang={lang}
+          isDark={isDark}
+        />
       </div>
     </div>
   );

@@ -2,15 +2,23 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, Minus, Plus, Hand, ArrowRight, Volume2, VolumeX, Activity } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ThemeToggle } from './ThemeToggle';
+import {
+  ChevronLeft,
+  Minus,
+  Plus,
+  Hand,
+  ArrowRight,
+  Volume2,
+  VolumeX,
+  Activity,
+  Sparkles,
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 import {
   playDialTick,
   startBpmMetronome,
   updateBpmMetronome,
   stopBpmMetronome,
-  playPopSound,
 } from '@/lib/soundEffects';
 import { AppLanguage } from '@/types/song';
 
@@ -25,6 +33,14 @@ interface BpmScreenProps {
   lang?: AppLanguage;
   onToggleLang?: () => void;
 }
+
+const BPM_PRESETS = [
+  { bpm: 120, labelKo: '120 웜업', labelEn: '120 Warm' },
+  { bpm: 140, labelKo: '140 조깅', labelEn: '140 Jog' },
+  { bpm: 160, labelKo: '160 지속주', labelEn: '160 Run' },
+  { bpm: 170, labelKo: '170 템포', labelEn: '170 Tempo' },
+  { bpm: 180, labelKo: '180 스프린트', labelEn: '180 Sprint' },
+];
 
 export const BpmScreen: React.FC<BpmScreenProps> = ({
   bpm,
@@ -168,85 +184,172 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
     onBack();
   };
 
+  // Find closest preset
+  const closestPresetBpm = BPM_PRESETS.reduce((prev, curr) =>
+    Math.abs(curr.bpm - bpm) < Math.abs(prev.bpm - bpm) ? curr : prev
+  ).bpm;
+
   return (
-    <div className="flex flex-col min-h-dvh justify-between p-6 select-none relative">
-      {/* Top Bar */}
-      <header className="grid grid-cols-3 items-center pt-1 z-10">
-        <div className="flex items-center justify-start">
+    <div className="flex flex-col min-h-dvh justify-between p-6 pb-36 select-none relative overflow-x-hidden">
+      {/* Ambient Top Gradient Glow (Apple Music Replay style) */}
+      <div
+        className="pointer-events-none absolute top-0 inset-x-0 h-72 opacity-25 dark:opacity-30 blur-3xl transition-colors duration-700"
+        style={{
+          background: `radial-gradient(ellipse at 50% -20%, ${zone.color} 0%, transparent 70%)`,
+        }}
+      />
+
+      {/* Top Navigation & Large Title Section */}
+      <header className="z-10 pt-1">
+        {/* Row 1: Back Button, Brand Pill, Quick Controls */}
+        <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={handleNavigateBack}
             aria-label={lang === 'ko' ? '이전' : 'Back'}
-            className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
+            className="w-10 h-10 rounded-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center shadow-sm text-zinc-900 dark:text-white hover:scale-105 active:scale-95 transition-transform cursor-pointer"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
+
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/60 dark:bg-zinc-900/60 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-sm">
+            <div className="relative w-5 h-5 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800">
+              <Image src={brandLogo} alt="PULSE" fill className="object-cover" />
+            </div>
+            <span className="font-black tracking-widest text-xs uppercase font-display text-zinc-900 dark:text-white">
+              PULSE
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {/* Quick Metronome Audio Toggle */}
+            <button
+              type="button"
+              onClick={handleToggleBeatLoop}
+              aria-label={isPlayingBeat ? '메트로놈 끄기' : '메트로놈 켜기'}
+              className={`w-10 h-10 rounded-full backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center shadow-sm transition-transform cursor-pointer active:scale-95 ${
+                isPlayingBeat
+                  ? 'bg-zinc-900 dark:bg-white text-[#C4FF00] dark:text-black'
+                  : 'bg-white/80 dark:bg-zinc-900/80 text-zinc-700 dark:text-zinc-300'
+              }`}
+            >
+              {isPlayingBeat ? (
+                <Volume2 className="w-4 h-4 animate-bounce" style={{ color: zone.color }} />
+              ) : (
+                <VolumeX className="w-4 h-4" />
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2">
-          <div className="relative w-6 h-6 rounded-md overflow-hidden border border-zinc-200 dark:border-zinc-800">
-            <Image src={brandLogo} alt="PULSE" fill className="object-cover" />
+        {/* Row 2: Apple Music Replay Large Title + Zone Capsule Pill */}
+        <div className="flex items-center justify-between mt-4">
+          <div>
+            <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-0.5">
+              {lang === 'ko' ? 'STEP 1 · 케이던스 설정' : 'STEP 1 · CADENCE SETUP'}
+            </span>
+            <h1 className="text-[34px] font-black tracking-tight text-zinc-900 dark:text-white leading-none font-display">
+              {lang === 'ko' ? '케이던스' : 'Cadence'}
+            </h1>
           </div>
-          <span className="font-black tracking-widest text-sm uppercase font-display text-zinc-900 dark:text-white">
-            PULSE
+
+          <span
+            className={`text-xs font-black px-3.5 py-1.5 rounded-full shadow-sm tracking-wide transition-all duration-300 ${zone.badgeBg}`}
+          >
+            {zone.label}
           </span>
         </div>
 
-        <div />
+        {/* Apple Music Replay Horizontal BPM Preset Strip */}
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-2.5 mt-3 -mx-6 px-6 border-b border-black/5 dark:border-white/5">
+          {BPM_PRESETS.map((p) => {
+            const isSelected = p.bpm === closestPresetBpm;
+            return (
+              <button
+                key={p.bpm}
+                type="button"
+                onClick={() => handleUpdateBpmWithSound(p.bpm)}
+                className={`px-3 py-1 rounded-full text-xs shrink-0 transition-all cursor-pointer ${
+                  isSelected
+                    ? 'font-black bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md ring-1 ring-black/10'
+                    : 'font-bold text-zinc-400 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 bg-black/5 dark:bg-white/5'
+                }`}
+              >
+                {lang === 'ko' ? p.labelKo : p.labelEn}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Apple Music Replay Editorial Statement Headline */}
+        <div className="my-4 text-left">
+          <h2 className="text-[23px] sm:text-[25px] font-black tracking-tight leading-snug font-display">
+            {lang === 'ko' ? (
+              <>
+                <span className="text-zinc-400 dark:text-zinc-500">현재 목표 케이던스는 </span>
+                <span className="text-zinc-900 dark:text-white">{bpm} BPM</span>
+                <span className="text-zinc-400 dark:text-zinc-500"> · </span>
+                <span style={{ color: zone.color }}>{zone.label}</span>
+                <span className="text-zinc-400 dark:text-zinc-500">입니다.</span>
+              </>
+            ) : (
+              <>
+                <span className="text-zinc-400 dark:text-zinc-500">You&apos;re locked into </span>
+                <span className="text-zinc-900 dark:text-white">{bpm} BPM</span>
+                <span className="text-zinc-400 dark:text-zinc-500"> for </span>
+                <span style={{ color: zone.color }}>{zone.label}</span>
+                <span className="text-zinc-400 dark:text-zinc-500">.</span>
+              </>
+            )}
+          </h2>
+          <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mt-1">
+            {lang === 'ko'
+              ? '러닝 보폭과 심박수에 최적화된 맞춤 비트를 설정하세요.'
+              : 'Dial in your stride cadence to match your ideal running tempo.'}
+          </p>
+        </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col justify-center py-4 text-center z-10">
-        <div className="mb-6">
-          <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-            {lang === 'ko' ? 'STEP 1 · 템포 설정' : 'STEP 1 · TEMPO SELECT'}
-          </span>
-          <h2 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white mt-1">
-            {lang === 'ko' ? '원하는 BPM을 입력하세요' : 'Set Your Cadence BPM'}
-          </h2>
-        </div>
-
-        {/* Live BPM-Synced Visual Pulse Card */}
+      {/* Main Apple HIG Glass Dial Card */}
+      <main className="flex-1 flex flex-col justify-center py-2 z-10">
         <motion.div
           animate={{
-            boxShadow: `0 0 ${isPlayingBeat ? '36px' : '22px'} ${zone.bgGlow}`,
+            boxShadow: `0 8px 32px ${isPlayingBeat ? zone.bgGlow : 'rgba(0, 0, 0, 0.08)'}`,
           }}
           transition={{
             duration: beatDuration,
             repeat: Infinity,
             ease: 'easeInOut',
           }}
-          className={`relative p-6 sm:p-7 rounded-3xl bg-zinc-100/90 dark:bg-zinc-900/90 border-2 ${zone.borderClass} mb-4 backdrop-blur-md transition-colors duration-300`}
+          className={`relative p-6 rounded-[28px] bg-zinc-100/85 dark:bg-zinc-900/85 backdrop-blur-2xl border-2 ${zone.borderClass} shadow-xl transition-colors duration-300`}
         >
-          {/* Top Info Header with Dynamic Zone Badge and Mini Cover Logo */}
+          {/* Card Top: Mini Cover Logo + Heartbeat Interval Indicator */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              {/* Mini cover logo spinning/bouncing to the beat */}
               <motion.div
                 key={zone.logo}
                 animate={{
-                  scale: [1, 1.12, 1],
-                  rotate: [0, 4, -4, 0],
+                  scale: [1, 1.1, 1],
+                  rotate: [0, 3, -3, 0],
                 }}
                 transition={{
                   duration: beatDuration,
                   repeat: Infinity,
                   ease: 'easeInOut',
                 }}
-                className="relative w-7 h-7 rounded-lg overflow-hidden border border-zinc-300/80 dark:border-zinc-700/80 shadow-md"
+                className="relative w-7 h-7 rounded-lg overflow-hidden border border-black/5 dark:border-white/10 shadow-sm"
               >
                 <Image src={zone.logo} alt="Zone Cover" fill className="object-cover" />
               </motion.div>
-              <span className={`text-xs font-black px-2 py-0.5 rounded-full ${zone.badgeBg}`}>
-                {zone.label}
+              <span className="text-xs font-black tracking-wide text-zinc-800 dark:text-zinc-200">
+                PULSE Engine
               </span>
             </div>
 
-            {/* Live Beat Visual Heartbeat Rate Indicator */}
             <motion.div
               animate={{
-                scale: [1, 1.25, 1],
-                opacity: [0.6, 1, 0.6],
+                scale: [1, 1.2, 1],
+                opacity: [0.65, 1, 0.65],
               }}
               transition={{
                 duration: beatDuration,
@@ -269,9 +372,9 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
               whileTap={{ scale: 0.92 }}
               onClick={() => handleNudge(-1)}
               aria-label={lang === 'ko' ? '1 감소' : '-1 BPM'}
-              className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white flex items-center justify-center shadow-sm cursor-pointer"
+              className="w-12 h-12 rounded-full bg-white dark:bg-zinc-800 border border-black/5 dark:border-white/10 text-zinc-900 dark:text-white flex items-center justify-center shadow-md active:scale-95 transition-transform cursor-pointer"
             >
-              <Minus className="w-5 h-5" />
+              <Minus className="w-5 h-5 stroke-[2.5]" />
             </motion.button>
 
             <div className="flex items-baseline justify-center">
@@ -286,8 +389,11 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
                 style={{ caretColor: zone.color }}
               />
               <span
-                className="text-xs font-black px-2 py-0.5 rounded-md ml-1 shadow-sm transition-colors duration-300"
-                style={{ backgroundColor: zone.color, color: bpm <= 130 ? '#000000' : '#ffffff' }}
+                className="text-xs font-black px-2.5 py-0.5 rounded-full ml-1.5 shadow-sm transition-colors duration-300"
+                style={{
+                  backgroundColor: zone.color,
+                  color: bpm <= 130 ? '#000000' : '#ffffff',
+                }}
               >
                 BPM
               </span>
@@ -299,9 +405,9 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
               whileTap={{ scale: 0.92 }}
               onClick={() => handleNudge(1)}
               aria-label={lang === 'ko' ? '1 증가' : '+1 BPM'}
-              className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white flex items-center justify-center shadow-sm cursor-pointer"
+              className="w-12 h-12 rounded-full bg-white dark:bg-zinc-800 border border-black/5 dark:border-white/10 text-zinc-900 dark:text-white flex items-center justify-center shadow-md active:scale-95 transition-transform cursor-pointer"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-5 h-5 stroke-[2.5]" />
             </motion.button>
           </div>
 
@@ -318,33 +424,33 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
               className="w-full cursor-pointer h-2 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none"
             />
             <div className="flex justify-between text-[11px] font-bold text-zinc-400 mt-2">
-              <span className={bpm <= 130 ? 'text-zinc-900 dark:text-white font-extrabold' : ''}>
+              <span className={bpm <= 130 ? 'text-zinc-900 dark:text-white font-black' : ''}>
                 80 ({lang === 'ko' ? '웜업' : 'Warmup'})
               </span>
               <span
                 className={
-                  bpm > 130 && bpm <= 160 ? 'text-zinc-900 dark:text-white font-extrabold' : ''
+                  bpm > 130 && bpm <= 160 ? 'text-zinc-900 dark:text-white font-black' : ''
                 }
               >
                 140 ({lang === 'ko' ? '조깅' : 'Jogging'})
               </span>
-              <span className={bpm > 160 ? 'text-zinc-900 dark:text-white font-extrabold' : ''}>
+              <span className={bpm > 160 ? 'text-zinc-900 dark:text-white font-black' : ''}>
                 200 ({lang === 'ko' ? '스프린트' : 'Sprint'})
               </span>
             </div>
           </div>
 
-          {/* Live Beat Audio Feedback Toggle Button */}
-          <div className="mt-5 pt-4 border-t border-zinc-200/60 dark:border-zinc-800/60">
+          {/* Live Beat Audio Feedback Toggle inside Card */}
+          <div className="mt-5 pt-4 border-t border-black/5 dark:border-white/10">
             <motion.button
               type="button"
               onClick={handleToggleBeatLoop}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
-              className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              className={`w-full py-3 px-4 rounded-full font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm ${
                 isPlayingBeat
-                  ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md ring-2'
-                  : 'bg-white dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                  ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 ring-2'
+                  : 'bg-white/80 dark:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 border border-black/5 dark:border-white/10 hover:bg-white dark:hover:bg-zinc-800'
               }`}
               style={isPlayingBeat ? { borderColor: zone.color } : {}}
             >
@@ -353,16 +459,15 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
                   <Volume2 className="w-4 h-4 animate-bounce" style={{ color: zone.color }} />
                   <span>
                     {lang === 'ko'
-                      ? `⏹️ ${bpm} BPM 실시간 비트 재생 중 (정지)`
-                      : `⏹️ Playing ${bpm} BPM metronome (tap to stop)`}
+                      ? `⏹️ ${bpm} BPM 실시간 메트로놈 재생 중`
+                      : `⏹️ Playing ${bpm} BPM metronome`}
                   </span>
-                  {/* Visual 4-beat dot indicator */}
                   <div className="flex items-center gap-1 ml-1.5">
                     {[0, 1, 2, 3].map((idx) => (
                       <span
                         key={idx}
-                        className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                          pulseCount === idx ? 'bg-current scale-125' : 'opacity-30 bg-current'
+                        className={`w-1.5 h-1.5 rounded-full transition-transform ${
+                          pulseCount === idx ? 'bg-current scale-150' : 'opacity-30 bg-current'
                         }`}
                       />
                     ))}
@@ -380,13 +485,13 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
           </div>
         </motion.div>
 
-        {/* Tap Tempo Entry Button */}
+        {/* Tap Tempo Capsule Button */}
         <motion.button
           type="button"
           onClick={handleNavigateTapTempo}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
-          className="w-full py-4 px-5 rounded-2xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200/80 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white font-bold text-sm flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-sm"
+          className="w-full mt-4 py-3.5 px-5 rounded-full bg-white/80 dark:bg-zinc-900/80 hover:bg-white dark:hover:bg-zinc-800 backdrop-blur-xl border border-black/5 dark:border-white/10 text-zinc-900 dark:text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
         >
           <Hand className="w-4 h-4 text-[#C4FF00]" />
           <span>
@@ -397,17 +502,17 @@ export const BpmScreen: React.FC<BpmScreenProps> = ({
         </motion.button>
       </main>
 
-      {/* Bottom CTA */}
-      <footer className="pb-4 pt-2 z-10">
+      {/* Bottom CTA Button */}
+      <footer className="pt-3 z-10">
         <motion.button
           type="button"
           onClick={handleNavigateNext}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.96 }}
-          className="w-full py-4 px-6 rounded-2xl bg-[#C4FF00] hover:bg-[#B8F500] text-black font-black text-base shadow-lg shadow-[#C4FF00]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full py-4 px-6 rounded-full bg-[#C4FF00] hover:bg-[#B8F500] text-black font-black text-base shadow-lg shadow-[#C4FF00]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <span>{lang === 'ko' ? '다음 단계 (장르 선택)' : 'Next (Select Genres)'}</span>
-          <ArrowRight className="w-5 h-5" />
+          <ArrowRight className="w-5 h-5 stroke-[2.5]" />
         </motion.button>
       </footer>
     </div>

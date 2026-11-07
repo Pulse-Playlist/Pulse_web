@@ -2,10 +2,9 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, RotateCcw, Check, Sparkles, Flame } from 'lucide-react';
+import { ChevronLeft, RotateCcw, Check, Sparkles, Flame, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ThemeToggle } from './ThemeToggle';
-import { playTapKick, playPopSound } from '@/lib/soundEffects';
+import { playTapKick } from '@/lib/soundEffects';
 import { AppLanguage } from '@/types/song';
 
 interface TapTempoScreenProps {
@@ -154,48 +153,83 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
   const hasEnoughTaps = taps.length >= 2 && measuredBpm !== null;
 
   return (
-    <div className="flex flex-col min-h-dvh justify-between p-6 select-none relative overflow-hidden">
+    <div className="flex flex-col min-h-dvh justify-between p-6 pb-36 select-none relative overflow-hidden">
+      {/* Ambient Top Gradient Glow */}
+      <div
+        className="pointer-events-none absolute top-0 inset-x-0 h-72 opacity-25 dark:opacity-30 blur-3xl transition-colors duration-700"
+        style={{
+          background: `radial-gradient(ellipse at 50% -20%, ${activeColor} 0%, transparent 70%)`,
+        }}
+      />
+
       {/* Top Bar */}
-      <header className="grid grid-cols-3 items-center pt-1 z-10">
-        <div className="flex items-center justify-start">
+      <header className="z-10 pt-1">
+        {/* Row 1: Back Button, Brand Pill, Reset Button */}
+        <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={onBack}
             aria-label={lang === 'ko' ? '뒤로 가기' : 'Back'}
-            className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
+            className="w-10 h-10 rounded-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center shadow-sm text-zinc-900 dark:text-white hover:scale-105 active:scale-95 transition-transform cursor-pointer"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
-        </div>
 
-        <div className="flex items-center justify-center gap-2">
-          <div className="relative w-6 h-6 rounded-md overflow-hidden border border-zinc-200 dark:border-zinc-800">
-            <Image src={brandLogo} alt="PULSE" fill className="object-cover" />
-          </div>
-          <span className="font-black tracking-widest text-sm uppercase font-display text-zinc-900 dark:text-white">
-            PULSE
-          </span>
-        </div>
-
-        <div />
-      </header>
-
-      {/* Main Tap Pad Section */}
-      <main className="flex-1 flex flex-col items-center justify-center text-center py-4 z-10">
-        <div className="mb-6">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[11px] font-extrabold text-zinc-600 dark:text-zinc-400 mb-2">
-            <Sparkles className="w-3 h-3 text-[#C4FF00]" />
-            <span>
-              {lang === 'ko'
-                ? '발걸음 박자에 맞춰 연속으로 탭하세요'
-                : 'Tap repeatedly to the rhythm of your stride'}
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/60 dark:bg-zinc-900/60 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-sm">
+            <div className="relative w-5 h-5 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800">
+              <Image src={brandLogo} alt="PULSE" fill className="object-cover" />
+            </div>
+            <span className="font-black tracking-widest text-xs uppercase font-display text-zinc-900 dark:text-white">
+              PULSE
             </span>
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white">
-            {lang === 'ko' ? '화면을 탭해서 템포 맞추기' : 'Tap to Measure Your Cadence'}
-          </h2>
+
+          {taps.length > 0 ? (
+            <button
+              type="button"
+              onClick={resetTaps}
+              aria-label={lang === 'ko' ? '초기화' : 'Reset'}
+              className="w-10 h-10 rounded-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center shadow-sm text-zinc-700 dark:text-zinc-300 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          ) : (
+            <div className="w-10 h-10" />
+          )}
         </div>
 
+        {/* Row 2: Apple HIG Large Title `Tap Tempo` + Right Status Badge */}
+        <div className="flex items-center justify-between mt-4">
+          <div>
+            <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-0.5">
+              {lang === 'ko' ? 'RHYTHM STUDIO · 탭 템포' : 'RHYTHM STUDIO · TAP TEMPO'}
+            </span>
+            <h1 className="text-[32px] font-black tracking-tight text-zinc-900 dark:text-white leading-none font-display">
+              {lang === 'ko' ? '탭 템포' : 'Tap Tempo'}
+            </h1>
+          </div>
+
+          <div
+            className="px-3.5 py-1.5 rounded-full text-xs font-black shadow-sm tracking-wide transition-colors duration-300"
+            style={{
+              backgroundColor: hasEnoughTaps ? activeColor : 'rgba(161, 161, 170, 0.2)',
+              color: hasEnoughTaps && activeColor === '#C4FF00' ? '#000000' : '#ffffff',
+            }}
+          >
+            {hasEnoughTaps ? `${measuredBpm} BPM` : 'READY'}
+          </div>
+        </div>
+
+        {/* Editorial Subtitle */}
+        <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mt-2">
+          {lang === 'ko'
+            ? '달리는 발걸음 박자에 맞춰 원형 패드를 가볍게 연속으로 터치하세요.'
+            : 'Tap the circular studio pad to match your natural running cadence.'}
+        </p>
+      </header>
+
+      {/* Main Studio Tap Pad Section */}
+      <main className="flex-1 flex flex-col items-center justify-center text-center py-4 z-10">
         {/* Central Rhythm Game Tap Pad Container */}
         <div className="relative flex items-center justify-center my-4">
           {/* Floating Rhythm Combo Badges */}
@@ -237,7 +271,7 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
             </AnimatePresence>
           </div>
 
-          {/* Rhythm Game Interactive Central Pad */}
+          {/* Rhythm Game Interactive Central Apple HIG Studio Pad */}
           <motion.button
             type="button"
             onClick={handleTap}
@@ -245,13 +279,11 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
             animate={{
               boxShadow: hasEnoughTaps
                 ? `0 0 35px ${activeColor}40`
-                : '0 10px 25px rgba(0, 0, 0, 0.1)',
+                : '0 10px 30px rgba(0, 0, 0, 0.12)',
             }}
             transition={{ duration: 0.2 }}
-            className={`relative w-64 h-64 rounded-full flex flex-col items-center justify-center p-6 border-4 cursor-pointer select-none transition-colors duration-200 ${
-              hasEnoughTaps
-                ? 'bg-zinc-100 dark:bg-zinc-900'
-                : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-800'
+            className={`relative w-64 h-64 rounded-full flex flex-col items-center justify-center p-6 border-2 cursor-pointer select-none transition-colors duration-200 bg-white/80 dark:bg-zinc-900/85 backdrop-blur-2xl shadow-2xl ${
+              hasEnoughTaps ? '' : 'border-black/10 dark:border-white/10'
             }`}
             style={{
               borderColor: hasEnoughTaps ? activeColor : undefined,
@@ -281,7 +313,7 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
             </motion.span>
 
             <span
-              className="text-xs font-black px-2.5 py-0.5 rounded-md mt-2 shadow-sm transition-colors duration-200"
+              className="text-xs font-black px-3 py-0.5 rounded-full mt-2 shadow-sm transition-colors duration-200"
               style={{
                 backgroundColor: hasEnoughTaps ? activeColor : '#C4FF00',
                 color: hasEnoughTaps && activeColor !== '#C4FF00' ? '#ffffff' : '#000000',
@@ -303,7 +335,7 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
                   key={step}
                   className={`w-2 h-2 rounded-full transition-all ${
                     taps.length >= step
-                      ? 'scale-110'
+                      ? 'scale-125'
                       : 'opacity-25 bg-zinc-400 dark:bg-zinc-600'
                   }`}
                   style={{
@@ -320,10 +352,10 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
           <p className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400">
             {hasEnoughTaps
               ? lang === 'ko'
-                ? '💡 꾸준히 탭할수록 더 정밀한 템포가 계산됩니다'
+                ? '💡 꾸준히 탭할수록 더 정밀한 평균 케이던스가 계산됩니다'
                 : '💡 Keep tapping for a more precise average BPM'
               : lang === 'ko'
-              ? '최소 2번 이상 리듬에 맞춰 탭해 주세요'
+              ? '최소 2번 이상 러닝 리듬에 맞춰 탭해 주세요'
               : 'Tap at least 2 times to measure tempo'}
           </p>
 
@@ -333,30 +365,30 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
               onClick={resetTaps}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white mt-1 py-1.5 px-3 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 text-xs font-bold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white mt-1 py-1.5 px-3.5 rounded-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-black/5 dark:border-white/10 transition-colors cursor-pointer shadow-sm"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>{lang === 'ko' ? '초기화' : 'Reset'}</span>
+              <span>{lang === 'ko' ? '기록 초기화' : 'Reset'}</span>
             </motion.button>
           )}
         </div>
       </main>
 
-      {/* Bottom CTA */}
-      <footer className="pb-4 pt-2 z-10">
+      {/* Bottom CTA Capsule Button */}
+      <footer className="pt-2 z-10">
         <motion.button
           type="button"
           disabled={!hasEnoughTaps}
           onClick={() => onConfirmBpm(currentEffectiveBpm)}
           whileHover={hasEnoughTaps ? { scale: 1.02 } : {}}
           whileTap={hasEnoughTaps ? { scale: 0.96 } : {}}
-          className={`w-full py-4 px-6 rounded-2xl font-black text-base transition-all flex items-center justify-center gap-2 ${
+          className={`w-full py-4 px-6 rounded-full font-black text-base transition-all flex items-center justify-center gap-2 ${
             hasEnoughTaps
               ? 'bg-[#C4FF00] hover:bg-[#B8F500] text-black shadow-lg shadow-[#C4FF00]/25 cursor-pointer'
               : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'
           }`}
         >
-          <Check className="w-5 h-5" />
+          <Check className="w-5 h-5 stroke-[2.5]" />
           <span>
             {hasEnoughTaps
               ? lang === 'ko'
