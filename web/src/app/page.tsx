@@ -67,7 +67,6 @@ export default function Page() {
   // Audio preview playback state
   const [currentPlayingSong, setCurrentPlayingSong] = useState<Song | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(30);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -282,7 +281,6 @@ export default function Page() {
     const audio = new Audio();
     audioRef.current = audio;
 
-    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
     const onLoadedMetadata = () => setDuration(audio.duration || 30);
 
     // Auto-advance to the next track when preview ends
@@ -324,7 +322,6 @@ export default function Page() {
       }
 
       setIsPlayingAudio(false);
-      setCurrentTime(0);
     };
 
     const onError = () => {
@@ -337,13 +334,11 @@ export default function Page() {
       );
     };
 
-    audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('loadedmetadata', onLoadedMetadata);
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('error', onError);
 
     return () => {
-      audio.removeEventListener('timeupdate', onTimeUpdate);
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
       audio.removeEventListener('ended', onEnded);
       audio.removeEventListener('error', onError);
@@ -929,7 +924,7 @@ export default function Page() {
         <MiniPlayerDock
           currentSong={currentPlayingSong}
           isPlaying={isPlayingAudio}
-          currentTime={currentTime}
+          audioRef={audioRef}
           duration={duration}
           onTogglePlay={handleToggleMiniPlayerPlay}
           onClose={handleCloseMiniPlayer}

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -16,7 +16,7 @@ import { getSongBpm } from '@/lib/playlistGenerator';
 export interface MiniPlayerDockProps {
   currentSong: Song | null;
   isPlaying: boolean;
-  currentTime: number;
+  audioRef: React.RefObject<HTMLAudioElement | null>;
   duration: number;
   onTogglePlay: () => void;
   onClose: () => void;
@@ -30,7 +30,7 @@ export interface MiniPlayerDockProps {
 export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
   currentSong,
   isPlaying,
-  currentTime,
+  audioRef,
   duration,
   onTogglePlay,
   onClose,
@@ -40,12 +40,42 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
   onOpenPlaylist,
   targetBpm = 160,
 }) => {
+  const progressBarRef = useRef<HTMLDivElement | null>(null);
+
+  // Smooth 60fps progress bar animation using requestAnimationFrame & GPU scaleX
+  useEffect(() => {
+    const bar = progressBarRef.current;
+    const audio = audioRef.current;
+    if (!bar) return;
+
+    const updateProgress = () => {
+      if (!audio) return;
+      const total = audio.duration && isFinite(audio.duration) ? audio.duration : duration || 30;
+      const ratio = total > 0 ? Math.min(1, Math.max(0, audio.currentTime / total)) : 0;
+      bar.style.transform = `scaleX(${ratio})`;
+    };
+
+    updateProgress();
+
+    if (!isPlaying) return;
+
+    let rafId: number;
+    const tick = () => {
+      updateProgress();
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
+  }, [isPlaying, currentSong, duration, audioRef]);
+
   // Critical Space Fix: When !currentSong, return null to avoid stealing screen space and colliding with bottom CTAs
   if (!currentSong) {
     return null;
   }
 
-  const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
   const songBpm = getSongBpm(currentSong) || targetBpm;
   const songZoneColor = songBpm <= 130 ? '#C4FF00' : songBpm <= 160 ? '#3B82F6' : '#FF4B4B';
   const isLime = songBpm <= 130;
@@ -62,15 +92,14 @@ export const MiniPlayerDock: React.FC<MiniPlayerDockProps> = ({
           transition={{ type: 'spring', damping: 28, stiffness: 380 }}
           className="pointer-events-auto w-full max-w-[390px] h-[52px] px-3 rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.12] shadow-[0_6px_24px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.5)] flex items-center justify-between gap-2.5 relative overflow-hidden"
         >
-          {/* Bottom edge progress bar synchronized with songZoneColor */}
-          {duration > 0 && (
-            <div className="absolute bottom-0 inset-x-4 h-[2px] bg-black/5 dark:bg-white/10 overflow-hidden rounded-full">
-              <div
-                className="h-full transition-all duration-150 rounded-full"
-                style={{ width: `${progress}%`, backgroundColor: songZoneColor }}
-              />
-            </div>
-          )}
+          {/* Bottom edge 60fps GPU-accelerated progress bar synchronized with songZoneColor */}
+          <div className="absolute bottom-0 inset-x-4 h-[2.5px] bg-black/[0.06] dark:bg-white/[0.12] overflow-hidden rounded-full">
+            <div
+              ref={progressBarRef}
+              className="w-full h-full origin-left rounded-full will-change-transform"
+              style={{ transform: 'scaleX(0)', backgroundColor: songZoneColor }}
+            />
+          </div>
 
           {/* Left: Thumbnail (Crisp and clean, with BPM zone border glow when playing) */}
           <button
