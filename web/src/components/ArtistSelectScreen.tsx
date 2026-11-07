@@ -279,15 +279,7 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col min-h-dvh justify-between select-none relative overflow-x-hidden pb-48">
-      {/* Ambient Top Glow */}
-      <div
-        className="pointer-events-none absolute top-0 inset-x-0 h-64 opacity-20 dark:opacity-25 blur-3xl transition-colors duration-700"
-        style={{
-          background: 'radial-gradient(ellipse at 50% -20%, #C4FF00 0%, transparent 70%)',
-        }}
-      />
-
+    <div className="flex flex-col gap-4 select-none relative overflow-x-hidden pb-24">
       {/* Top Header */}
       <header className="sticky top-0 z-30 px-5 pt-3 pb-2.5 bg-white/80 dark:bg-black/80 backdrop-blur-2xl border-b border-black/5 dark:border-white/10">
         <div className="flex items-center justify-between">
@@ -313,27 +305,43 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
             )}
           </div>
 
-          {/* Quick Header CTA */}
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className={`px-4 py-1.5 rounded-full text-xs font-black shadow-sm transition-all cursor-pointer flex items-center gap-1.5 ${
-              preferredArtists.length > 0
-                ? 'bg-[#C4FF00] hover:bg-[#B8F500] text-black shadow-[#C4FF00]/25'
-                : 'bg-black/5 dark:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-            }`}
-          >
-            {preferredArtists.length > 0 ? (
-              <>
-                <Check className="w-3.5 h-3.5 stroke-[3]" />
-                <span>{lang === 'ko' ? '선택 완료' : 'Done'}</span>
-              </>
-            ) : mode === 'onboarding' ? (
-              <span>{lang === 'ko' ? '건너뛰기' : 'Skip'}</span>
-            ) : (
-              <span>{lang === 'ko' ? '완료' : 'Done'}</span>
+          {/* Quick Header CTA & Clear button */}
+          <div className="flex items-center gap-2">
+            {preferredArtists.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  playPopSound(false);
+                  onClearArtists();
+                }}
+                className="px-2.5 py-1 rounded-full text-xs font-bold text-zinc-500 hover:text-rose-500 transition-colors flex items-center gap-1 cursor-pointer active:scale-95"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>{lang === 'ko' ? '초기화' : 'Clear'}</span>
+              </button>
             )}
-          </button>
+
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className={`px-4 py-1.5 rounded-full text-xs font-black shadow-sm transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                preferredArtists.length > 0
+                  ? 'bg-[#C4FF00] hover:bg-[#B8F500] text-black'
+                  : 'bg-black/5 dark:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+              }`}
+            >
+              {preferredArtists.length > 0 ? (
+                <>
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>{lang === 'ko' ? '선택 완료' : 'Done'}</span>
+                </>
+              ) : mode === 'onboarding' ? (
+                <span>{lang === 'ko' ? '건너뛰기' : 'Skip'}</span>
+              ) : (
+                <span>{lang === 'ko' ? '완료' : 'Done'}</span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Large Title Row */}
@@ -348,7 +356,7 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
           </div>
 
           {preferredArtists.length > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C4FF00]/15 border border-[#C4FF00]/40 text-[#00A344] dark:text-[#C4FF00] text-xs font-black">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C4FF00]/15 border border-[#C4FF00]/40 text-[#00A344] dark:text-[#C4FF00] text-xs font-black shadow-sm">
               <Sparkles className="w-3.5 h-3.5" />
               <span>{preferredArtists.length}</span>
             </div>
@@ -357,11 +365,11 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 px-5 pt-3 z-10">
-        {/* NEW — Apple Music "Your Top Artists >" Numbered Portrait Cards Carousel (Screenshot 2 bottom) */}
-        <div className="mb-5">
-          <div className="flex items-center justify-between mb-2.5">
-            <h2 className="text-[19px] font-black tracking-tight text-zinc-900 dark:text-white flex items-center gap-1 font-display">
+      <main className="flex-1 px-5 pt-1 z-10">
+        {/* NEW — Apple Music "Your Top Artists >" Numbered Portrait Cards Carousel */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-[18px] font-black tracking-tight text-zinc-900 dark:text-white flex items-center gap-1 font-display">
               <span>{lang === 'ko' ? '추천 및 인기 아티스트' : 'Your Top Artists'}</span>
               <ChevronRight className="w-4 h-4 text-zinc-400" />
             </h2>
@@ -370,21 +378,19 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
             </span>
           </div>
 
-          <div className="flex overflow-x-auto snap-x snap-mandatory gap-3.5 scrollbar-none -mx-5 px-5 pb-2">
+          <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 scrollbar-none -mx-5 px-5 pb-1">
             {topCarouselArtists.map((node, index) => {
               const isSelected = selectedSet.has(node.name);
               const displayName = lang === 'ko' ? node.nameKo : node.nameEn;
               const trackCount = node.bpm130_180Count || node.trackCount;
 
               return (
-                <motion.div
+                <div
                   key={node.name}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleBubbleTap(node.name)}
-                  className={`w-[150px] h-[205px] rounded-[24px] overflow-hidden relative shrink-0 snap-start cursor-pointer group shadow-lg border transition-all duration-200 ${
+                  className={`w-[132px] h-[176px] rounded-[20px] overflow-hidden relative shrink-0 snap-start cursor-pointer group shadow-md border transition-all duration-150 active:scale-95 ${
                     isSelected
-                      ? 'border-[#C4FF00] ring-2 ring-[#C4FF00]/40 shadow-[#C4FF00]/20'
+                      ? 'border-[#C4FF00] ring-1 ring-[#C4FF00]/40'
                       : 'border-black/5 dark:border-white/10'
                   }`}
                 >
@@ -395,39 +401,39 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
                       alt={displayName}
                       fill
                       unoptimized
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
                     <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-600">
-                      <Music className="w-10 h-10" />
+                      <Music className="w-8 h-8" />
                     </div>
                   )}
 
                   {/* Gradient Overlay for Apple Music Look */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-black/10" />
 
-                  {/* Top-Left Giant Rank Number (Screenshot 2 exact style) */}
-                  <span className="absolute top-2.5 left-3.5 text-[34px] font-black leading-none text-white drop-shadow-md font-display select-none">
+                  {/* Top-Left Giant Rank Number */}
+                  <span className="absolute top-2 left-3 text-[28px] font-black leading-none text-white drop-shadow-md font-display select-none">
                     {index + 1}
                   </span>
 
                   {/* Top-Right Selected Checkmark Badge */}
                   {isSelected && (
-                    <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-[#C4FF00] text-black flex items-center justify-center shadow-md border border-black/20">
-                      <Check className="w-3.5 h-3.5 stroke-[3.5]" />
+                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#C4FF00] text-black flex items-center justify-center shadow-sm">
+                      <Check className="w-3 h-3 stroke-[3.5]" />
                     </div>
                   )}
 
                   {/* Bottom Text Details */}
-                  <div className="absolute bottom-3 inset-x-0 px-2.5 text-center flex flex-col items-center">
-                    <span className="text-[13px] font-black text-white truncate w-full leading-tight drop-shadow-sm font-display">
+                  <div className="absolute bottom-2.5 inset-x-0 px-2 text-center flex flex-col items-center">
+                    <span className="text-[12px] font-black text-white truncate w-full leading-tight font-display">
                       {displayName}
                     </span>
                     <span className="text-[10px] font-semibold text-[#C4FF00] mt-0.5 tracking-tight truncate w-full">
-                      {trackCount} cadence tracks
+                      {trackCount} tracks
                     </span>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>
@@ -440,14 +446,14 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
           </h3>
 
           {/* Search Input */}
-          <div className="relative mb-2.5">
+          <div className="relative mb-2">
             <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={lang === 'ko' ? '아티스트 검색 (한글 / 영문)' : 'Search artists'}
-              className="w-full pl-9 pr-9 py-2.5 rounded-full bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/10 text-xs font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-[#C4FF00] focus:ring-1 focus:ring-[#C4FF00]"
+              className="w-full pl-9 pr-9 py-2 rounded-full bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/10 text-xs font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:border-[#C4FF00]"
             />
             {searchQuery && (
               <button
@@ -484,7 +490,7 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
                     playPopSound();
                     setActiveTab(tab.id);
                   }}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-black shrink-0 transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-full text-xs font-black shrink-0 transition-all cursor-pointer ${
                     active
                       ? 'bg-[#C4FF00] text-black shadow-sm'
                       : 'bg-black/5 dark:bg-white/10 text-zinc-600 dark:text-zinc-400 border border-black/5 dark:border-white/10 hover:border-black/20 dark:hover:border-white/30'
@@ -497,8 +503,8 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
           </div>
         </div>
 
-        {/* 3-Column Circular Artist Grid with In-Place Dynamic Expansion */}
-        <motion.div layout className="grid grid-cols-3 gap-x-4 gap-y-6 pt-1">
+        {/* 3-Column Circular Artist Grid (w-20 h-20 avatars for comfortable mobile spacing) */}
+        <motion.div layout className="grid grid-cols-3 gap-x-3 gap-y-5 pt-1">
           <AnimatePresence mode="popLayout">
             {displayedArtistNodes.map((node) => {
               const isSelected = selectedSet.has(node.name);
@@ -512,29 +518,29 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
                   layout
                   initial={
                     spawnedParent
-                      ? { opacity: 0, scale: 0.25, y: 10 }
-                      : { opacity: 0, scale: 0.85 }
+                      ? { opacity: 0, scale: 0.3, y: 8 }
+                      : { opacity: 0, scale: 0.9 }
                   }
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.5 }}
                   transition={{
                     type: 'spring',
-                    stiffness: 380,
-                    damping: 26,
+                    stiffness: 400,
+                    damping: 28,
                   }}
                   whileTap={{ scale: 0.92 }}
                   onClick={() => handleBubbleTap(node.name)}
                   className="flex flex-col items-center text-center cursor-pointer group focus:outline-none"
                 >
                   {/* Circular Artist Avatar */}
-                  <div className="relative w-24 h-24">
+                  <div className="relative w-20 h-20">
                     <div
-                      className={`relative w-full h-full rounded-full overflow-hidden transition-all duration-200 bg-zinc-900 ${
+                      className={`relative w-full h-full rounded-full overflow-hidden transition-all duration-150 bg-zinc-900 ${
                         isSelected
-                          ? 'ring-[3px] ring-[#C4FF00] shadow-lg shadow-[#C4FF00]/25'
+                          ? 'ring-[3px] ring-[#C4FF00] shadow-md'
                           : spawnedParent
-                          ? 'ring-2 ring-zinc-300 dark:ring-zinc-600 shadow-md'
-                          : 'shadow-md border border-black/5 dark:border-white/10'
+                          ? 'ring-2 ring-zinc-300 dark:ring-zinc-600 shadow-sm'
+                          : 'shadow-sm border border-black/5 dark:border-white/10'
                       }`}
                     >
                       {node.coverUrl ? (
@@ -547,7 +553,7 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-zinc-500">
-                          <Music className="w-7 h-7" />
+                          <Music className="w-6 h-6" />
                         </div>
                       )}
 
@@ -564,9 +570,9 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
                           animate={{ scale: 1, opacity: 1 }}
                           exit={{ scale: 0, opacity: 0 }}
                           transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                          className="absolute top-0.5 right-0.5 w-7 h-7 rounded-full bg-[#C4FF00] text-black flex items-center justify-center shadow-md border-2 border-white dark:border-black"
+                          className="absolute top-0 right-0 w-6 h-6 rounded-full bg-[#C4FF00] text-black flex items-center justify-center shadow-sm border-2 border-white dark:border-black"
                         >
-                          <Check className="w-4 h-4 stroke-[3.5]" />
+                          <Check className="w-3.5 h-3.5 stroke-[3.5]" />
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -574,7 +580,7 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
 
                   {/* Artist Name cleanly below circle */}
                   <span
-                    className={`mt-2 text-xs font-black leading-tight line-clamp-1 w-full transition-colors ${
+                    className={`mt-1.5 text-xs font-black leading-tight line-clamp-1 w-full transition-colors ${
                       isSelected
                         ? 'text-zinc-900 dark:text-[#C4FF00]'
                         : 'text-zinc-800 dark:text-zinc-100'
@@ -588,80 +594,6 @@ export const ArtistSelectScreen: React.FC<ArtistSelectScreenProps> = ({
           </AnimatePresence>
         </motion.div>
       </main>
-
-      {/* Floating Selected Artists Confirmation Tray
-          Positioned at bottom-[140px] so it NEVER collides with MiniPlayerDock (bottom-[72px]) or BottomTabBar (bottom-3) */}
-      {preferredArtists.length > 0 && (
-        <motion.div
-          initial={{ y: 20, opacity: 0, scale: 0.95 }}
-          animate={{ y: 0, opacity: 1, scale: 1 }}
-          exit={{ y: 20, opacity: 0, scale: 0.95 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-          className="fixed bottom-[140px] inset-x-0 mx-auto max-w-[398px] w-[92%] z-30 px-4 py-2.5 rounded-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-2xl border border-black/5 dark:border-white/10 shadow-2xl flex items-center justify-between"
-        >
-          {/* Left: Stacked Avatars & Count */}
-          <div className="flex items-center gap-2 min-w-0 pr-2">
-            <div className="flex -space-x-2 overflow-hidden shrink-0">
-              {preferredArtists.slice(-4).map((artistName) => {
-                const node = catalog.get(artistName);
-                return (
-                  <div
-                    key={artistName}
-                    className="relative inline-block w-6 h-6 rounded-full ring-2 ring-white dark:ring-black overflow-hidden bg-zinc-800"
-                  >
-                    {node?.coverUrl && (
-                      <Image
-                        src={node.coverUrl}
-                        alt={artistName}
-                        fill
-                        unoptimized
-                        className="object-cover"
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <span className="text-xs font-black text-zinc-900 dark:text-white truncate">
-              {lang === 'ko'
-                ? `${preferredArtists.length}명 선택됨 (+${relatedSet.size}팀)`
-                : `${preferredArtists.length} selected (+${relatedSet.size})`}
-            </span>
-          </div>
-
-          {/* Right: Reset & Confirm Buttons */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                playPopSound(false);
-                onClearArtists();
-              }}
-              aria-label={lang === 'ko' ? '초기화' : 'Clear'}
-              className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-
-            <motion.button
-              type="button"
-              disabled={isSaving}
-              onClick={handleConfirm}
-              whileTap={{ scale: 0.95 }}
-              className="px-4 py-1.5 rounded-full bg-[#C4FF00] hover:bg-[#B8F500] text-black font-black text-xs shadow-md shadow-[#C4FF00]/25 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              {isSaving ? (
-                <span className="w-3.5 h-3.5 rounded-full border-2 border-black border-t-transparent animate-spin" />
-              ) : (
-                <>
-                  <Check className="w-3.5 h-3.5 stroke-[3]" />
-                  <span>{lang === 'ko' ? '완료' : 'Done'}</span>
-                </>
-              )}
-            </motion.button>
-          </div>
-        </motion.div>
-      )}
     </div>
   );
 };
