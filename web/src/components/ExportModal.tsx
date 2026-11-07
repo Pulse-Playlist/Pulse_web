@@ -9,15 +9,13 @@ import {
   Share2,
   Download,
   ExternalLink,
-  Sparkles,
   FileSpreadsheet,
   CheckCircle2,
-  Layers,
   Loader2,
   AlertCircle,
   RotateCw,
   Music,
-  Edit3,
+  ChevronRight,
 } from 'lucide-react';
 import { Song, GenreTag, AppLanguage } from '@/types/song';
 import {
@@ -75,10 +73,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformKey>('youtube_music');
   const [copiedType, setCopiedType] = useState<'text' | 'link' | 'platform' | null>(null);
 
-  // Custom Playlist Name state
   const defaultName =
     playlistName ||
-    (lang === 'ko' ? `PULSE ${targetBpm} BPM 러닝 플레이리스트` : `PULSE ${targetBpm} BPM Running Playlist`);
+    (lang === 'ko' ? `PULSE ${targetBpm} BPM 러닝 믹스` : `PULSE ${targetBpm} BPM Mix`);
   const [currentName, setCurrentName] = useState<string>(defaultName);
 
   useEffect(() => {
@@ -99,7 +96,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentPlatformMeta = PLATFORMS[selectedPlatform];
+  // Synchronized BPM Zone Color
+  const zoneColor = targetBpm <= 130 ? '#C4FF00' : targetBpm <= 160 ? '#3B82F6' : '#FF4B4B';
+  const isLime = targetBpm <= 130;
 
   // Create playlist directly in Apple Music library
   const handleCreateAppleMusic = async () => {
@@ -147,32 +146,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         setCopiedType(context);
         showToast(
           lang === 'ko'
-            ? `${playlist.length}곡 트랙 목록이 클립보드에 복사되었어요!`
-            : `Copied ${playlist.length} tracks to clipboard!`,
-          'success'
-        );
-        setTimeout(() => setCopiedType(null), 2500);
-      });
-    } else {
-      showToast(
-        lang === 'ko'
-          ? '클립보드를 지원하지 않는 환경입니다'
-          : 'Clipboard not supported in this environment',
-        'info'
-      );
-    }
-  };
-
-  // Copy shareable URL
-  const handleCopyShareLink = () => {
-    const url = getShareableUrl(targetBpm, selectedCategories);
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(url).then(() => {
-        setCopiedType('link');
-        showToast(
-          lang === 'ko'
-            ? '공유 링크가 클립보드에 복사되었어요!'
-            : 'Share link copied to clipboard!',
+            ? `${playlist.length}곡 트랙 목록이 복사되었어요`
+            : `Copied ${playlist.length} tracks to clipboard`,
           'success'
         );
         setTimeout(() => setCopiedType(null), 2500);
@@ -187,7 +162,31 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     }
   };
 
-  // Handle clicking a platform card: auto copy + set active
+  // Copy shareable URL
+  const handleCopyShareLink = () => {
+    const url = getShareableUrl(targetBpm, selectedCategories);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopiedType('link');
+        showToast(
+          lang === 'ko'
+            ? '공유 링크가 클립보드에 복사되었어요'
+            : 'Share link copied to clipboard',
+          'success'
+        );
+        setTimeout(() => setCopiedType(null), 2500);
+      });
+    } else {
+      showToast(
+        lang === 'ko'
+          ? '클립보드를 지원하지 않는 환경입니다'
+          : 'Clipboard not supported',
+        'info'
+      );
+    }
+  };
+
+  // Handle clicking a platform row: copy tracklist + select
   const handleSelectPlatform = (key: PlatformKey) => {
     setSelectedPlatform(key);
     handleCopyTracklist('platform');
@@ -198,9 +197,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     if (!playlist.length) return;
     downloadPlaylistCsv(playlist, targetBpm, currentName, lang);
     showToast(
-      lang === 'ko'
-        ? `CSV 다운로드를 시작합니다!`
-        : `Downloading CSV playlist!`,
+      lang === 'ko' ? 'CSV 다운로드를 시작합니다' : 'Downloading CSV playlist',
       'success'
     );
   };
@@ -210,9 +207,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     if (!playlist.length) return;
     downloadPlaylistM3u(playlist, targetBpm, currentName, lang);
     showToast(
-      lang === 'ko'
-        ? `M3U8 다운로드를 시작합니다!`
-        : `Downloading M3U8 playlist!`,
+      lang === 'ko' ? 'M3U8 다운로드를 시작합니다' : 'Downloading M3U8 playlist',
       'success'
     );
   };
@@ -225,43 +220,61 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
         {/* Backdrop overlay */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.18 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/65 backdrop-blur-md"
         />
 
-        {/* Modal Container */}
+        {/* Apple HIG Sheet Container (Constrained to 430px mobile frame) */}
         <motion.div
-          initial={{ y: '100%', opacity: 0.8 }}
+          initial={{ y: '100%', opacity: 0.9 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
-          transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-          className="relative w-full max-w-[440px] max-h-[90vh] flex flex-col bg-white dark:bg-[#121216] border-t sm:border border-zinc-200 dark:border-zinc-800 rounded-t-[32px] sm:rounded-[32px] shadow-2xl overflow-hidden z-10"
+          transition={{ type: 'spring', damping: 30, stiffness: 360 }}
+          className="relative w-full max-w-[430px] max-h-[85dvh] flex flex-col bg-[#F5F5F7] dark:bg-[#141416] border-t sm:border border-black/[0.08] dark:border-white/[0.1] rounded-t-[28px] sm:rounded-[28px] shadow-2xl overflow-hidden z-10"
         >
           {/* Top Grab Handle */}
-          <div className="pt-3 pb-1 flex justify-center cursor-pointer" onClick={onClose}>
-            <div className="w-10 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+          <div
+            className="pt-2.5 pb-1 flex justify-center cursor-pointer shrink-0"
+            onClick={onClose}
+          >
+            <div className="w-9 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700" />
           </div>
 
-          {/* Modal Header */}
-          <div className="px-6 py-3 border-b border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-black text-[#C4FF00] dark:bg-[#C4FF00] dark:text-black flex items-center justify-center shadow-sm">
+          {/* Sheet Header */}
+          <div className="px-5 py-2.5 flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.07] shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                style={{
+                  backgroundColor: zoneColor,
+                  color: isLime ? '#000000' : '#FFFFFF',
+                }}
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-xs"
+              >
                 <Music className="w-4 h-4" />
               </div>
-              <div>
-                <h2 className="text-base font-black text-zinc-900 dark:text-white flex items-center gap-1.5">
+              <div className="min-w-0">
+                <h2 className="text-[15px] font-black tracking-tight text-zinc-900 dark:text-white truncate">
                   {lang === 'ko' ? '플레이리스트 내보내기' : 'Export Playlist'}
                 </h2>
                 <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
-                  {targetBpm} BPM · {playlist.length}
-                  {lang === 'ko' ? '곡 수록' : ' tracks'}
+                  <span
+                    className={`font-bold ${isLime ? 'text-[#3f6212] dark:text-[#C4FF00]' : ''}`}
+                    style={!isLime ? { color: zoneColor } : undefined}
+                  >
+                    {targetBpm} BPM
+                  </span>
+                  <span>
+                    {' '}
+                    · {playlist.length}
+                    {lang === 'ko' ? '곡' : ' tracks'}
+                  </span>
                 </p>
               </div>
             </div>
@@ -269,150 +282,120 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              aria-label="창 닫기"
-              className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+              aria-label={lang === 'ko' ? '창 닫기' : 'Close'}
+              className="w-8 h-8 rounded-full bg-black/[0.05] dark:bg-white/[0.08] hover:bg-black/[0.1] dark:hover:bg-white/[0.14] text-zinc-500 dark:text-zinc-400 flex items-center justify-center transition-colors cursor-pointer shrink-0"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Scrollable Body */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 text-zinc-800 dark:text-zinc-200">
-            {/* Custom Playlist Name Bar */}
-            <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800">
-              <div className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 mb-1.5">
-                <Edit3 className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-bold">
-                  {lang === 'ko' ? '내보낼 플레이리스트 이름' : 'Export Playlist Title'}
-                </span>
+          {/* Scrollable Sheet Content */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            {/* 1. Playlist Title Input Group */}
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-1">
+                {lang === 'ko' ? '플레이리스트 제목' : 'Playlist Title'}
+              </label>
+              <div className="rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] px-3.5 py-2.5 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={currentName}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder={lang === 'ko' ? '플레이리스트 이름 입력' : 'Enter playlist title'}
+                  className="w-full bg-transparent text-[13px] font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none"
+                />
               </div>
-              <input
-                type="text"
-                value={currentName}
-                onChange={(e) => handleNameChange(e.target.value)}
-                placeholder={lang === 'ko' ? '플레이리스트 이름' : 'Playlist name'}
-                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-black border border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#C4FF00]"
-              />
             </div>
 
-            {/* ============================================================== */}
-            {/* FEATURED: Apple Music Direct Library Creation (Native MusicKit) */}
-            {/* ============================================================== */}
-            <section className="relative overflow-hidden rounded-2xl border border-rose-500/30 bg-gradient-to-br from-rose-500/10 via-pink-500/5 to-transparent p-4 shadow-sm dark:border-rose-500/20 dark:from-rose-950/40 dark:via-zinc-900/60 dark:to-zinc-900/40">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5">
-                  <AppleIcon className="w-4 h-4 text-[#FA243C]" />
-                  <span className="text-xs font-black uppercase tracking-wider text-zinc-900 dark:text-white">
-                    {lang === 'ko' ? 'Apple Music 보관함 연동' : 'Apple Music Sync'}
-                  </span>
+            {/* 2. Primary Action: Apple Music Direct Library Sync */}
+            <div className="rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] p-3.5 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-[#FA243C] text-white flex items-center justify-center shrink-0">
+                    <AppleIcon className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-[13px] font-bold text-zinc-900 dark:text-white truncate">
+                      {lang === 'ko' ? 'Apple Music 보관함 연동' : 'Apple Music Library Sync'}
+                    </h3>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                      {lang === 'ko'
+                        ? '로그인 한 번으로 내 보관함에 즉시 생성'
+                        : 'Create directly in your Apple Music library'}
+                    </p>
+                  </div>
                 </div>
-                <span className="text-[10px] font-black text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20 flex items-center gap-1">
-                  <Sparkles className="w-2.5 h-2.5" /> {lang === 'ko' ? '원클릭 자동 생성' : 'One-Click Sync'}
+                <span className="text-[10px] font-bold text-[#FA243C] bg-[#FA243C]/10 px-2 py-0.5 rounded-full shrink-0">
+                  MusicKit
                 </span>
               </div>
 
-              <p className="text-[11px] text-zinc-600 dark:text-zinc-300 mb-3.5 leading-relaxed">
-                {lang === 'ko' ? (
-                  <>
-                    Apple ID 로그인 한 번으로{' '}
-                    <span className="font-bold text-zinc-900 dark:text-white">
-                      {currentName} ({playlist.length}곡)
-                    </span>
-                    가 내 Apple Music 보관함에 즉시 플레이리스트로 생성됩니다.
-                  </>
-                ) : (
-                  <>
-                    Log in once with your Apple ID and create{' '}
-                    <span className="font-bold text-zinc-900 dark:text-white">
-                      {currentName} ({playlist.length} tracks)
-                    </span>{' '}
-                    directly in your Apple Music library.
-                  </>
-                )}
-              </p>
-
-              {/* Status Views */}
               {amStatus === 'idle' && (
                 <button
                   type="button"
                   onClick={handleCreateAppleMusic}
-                  className="w-full py-3 px-4 rounded-xl bg-[#FA243C] hover:bg-[#e01d34] text-white text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-rose-500/20 active:scale-[0.98] transition-all cursor-pointer"
+                  className="w-full h-10 px-4 rounded-xl bg-[#FA243C] hover:bg-[#e01d34] text-white text-[13px] font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
                 >
                   <AppleIcon className="w-4 h-4 fill-current" />
                   <span>
                     {lang === 'ko'
-                      ? '🍎 Apple Music 내 보관함에 바로 생성'
-                      : '🍎 Create in Apple Music Library'}
+                      ? 'Apple Music 보관함에 바로 생성'
+                      : 'Create in Apple Music Library'}
                   </span>
                 </button>
               )}
 
               {isAmLoading && (
-                <div className="w-full py-3 px-4 rounded-xl bg-zinc-900/90 text-white dark:bg-zinc-800 text-xs font-black flex items-center justify-center gap-2.5 border border-zinc-700/50 shadow-inner">
+                <div className="w-full h-10 px-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-white text-[12px] font-bold flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin text-[#FA243C]" />
-                  <span>
+                  <span className="truncate">
                     {amProgressMessage ||
                       (amStatus === 'authorizing'
                         ? lang === 'ko'
                           ? 'Apple ID 인증 중...'
                           : 'Authorizing Apple ID...'
                         : lang === 'ko'
-                        ? `애플뮤직 보관함에 ${playlist.length}곡 추가 중...`
-                        : `Adding ${playlist.length} tracks to library...`)}
+                        ? `${playlist.length}곡 추가 중...`
+                        : `Adding ${playlist.length} tracks...`)}
                   </span>
                 </div>
               )}
 
               {amStatus === 'done' && (
-                <div className="space-y-2.5">
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center gap-2">
+                <div className="space-y-2">
+                  <div className="px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[12px] font-bold flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
-                    <span>
+                    <span className="truncate">
                       {lang === 'ko'
-                        ? '내 애플뮤직에 플레이리스트가 생성되었어요!'
-                        : 'Playlist created in your Apple Music!'}
+                        ? 'Apple Music 보관함에 생성 완료!'
+                        : 'Created in your Apple Music!'}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <a
                       href={amResult?.appUrl || 'music://'}
-                      className="py-2.5 px-3 rounded-xl bg-[#FA243C] hover:bg-[#e01d34] text-white text-xs font-black flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                      className="h-9 px-3 rounded-xl bg-[#FA243C] text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
                     >
                       <AppleIcon className="w-3.5 h-3.5 fill-current" />
-                      <span>{lang === 'ko' ? '애플뮤직 앱 열기' : 'Open Apple Music'}</span>
+                      <span>{lang === 'ko' ? '앱 열기' : 'Open App'}</span>
                     </a>
-
                     <a
                       href={amResult?.webUrl || 'https://music.apple.com/library/playlists'}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="py-2.5 px-3 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-[11px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                      className="h-9 px-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-[12px] font-bold flex items-center justify-center gap-1 active:scale-95 transition-transform"
                     >
-                      <span>{lang === 'ko' ? '웹에서 보기' : 'View on Web'}</span>
+                      <span>{lang === 'ko' ? '웹에서 보기' : 'Web'}</span>
                       <ExternalLink className="w-3 h-3 text-zinc-400" />
                     </a>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAmStatus('idle');
-                        setAmResult(null);
-                      }}
-                      className="text-[10px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center gap-1 transition-colors"
-                    >
-                      <RotateCw className="w-2.5 h-2.5" />{' '}
-                      {lang === 'ko' ? '다시 생성하기' : 'Create again'}
-                    </button>
                   </div>
                 </div>
               )}
 
               {amStatus === 'error' && (
                 <div className="space-y-2">
-                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 text-xs font-medium flex items-start gap-2">
+                  <div className="px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-[11px] font-medium flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
                     <span className="leading-snug">
                       {amProgressMessage ||
@@ -421,233 +404,207 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                           : 'Failed to create playlist.')}
                     </span>
                   </div>
-
                   <button
                     type="button"
                     onClick={handleCreateAppleMusic}
-                    className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black text-xs font-black flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                    className="w-full h-9 px-3 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform cursor-pointer"
                   >
                     <RotateCw className="w-3.5 h-3.5" />
-                    <span>{lang === 'ko' ? '다시 시도하기' : 'Retry'}</span>
+                    <span>{lang === 'ko' ? '다시 시도' : 'Retry'}</span>
                   </button>
                 </div>
               )}
-            </section>
+            </div>
 
-            {/* ============================================================== */}
-            {/* Section 2: Other Streaming Platforms (Direct Link & Quick Copy) */}
-            {/* ============================================================== */}
-            <section>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-zinc-400 shrink-0" />
-                  <h3 className="text-xs font-black uppercase tracking-wider text-zinc-900 dark:text-white">
-                    {lang === 'ko' ? '다른 플랫폼에서 듣기' : 'Stream on Other Platforms'}
-                  </h3>
-                </div>
+            {/* 3. Streaming Platforms Grouped List (Clean iOS Settings Row Style) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                  {lang === 'ko'
+                    ? '다른 스트리밍 플랫폼 (클릭 시 목록 자동 복사)'
+                    : 'Other Platforms (Auto-Copies Tracklist)'}
+                </span>
                 {copiedType === 'platform' && (
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Check className="w-3 h-3" />{' '}
-                    {lang === 'ko' ? `${playlist.length}곡 복사됨` : `${playlist.length} tracks copied`}
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <Check className="w-3 h-3" />
+                    {lang === 'ko' ? '복사됨' : 'Copied'}
                   </span>
                 )}
               </div>
 
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-3 leading-relaxed">
-                {lang === 'ko' ? (
-                  <>
-                    플랫폼을 누르면{' '}
-                    <span className="font-bold text-zinc-800 dark:text-zinc-200">
-                      전체 트랙리스트가 자동 복사
-                    </span>
-                    되며 해당 플랫폼으로 바로 이동합니다.
-                  </>
-                ) : (
-                  <>
-                    Click a platform to{' '}
-                    <span className="font-bold text-zinc-800 dark:text-zinc-200">
-                      auto-copy tracklist
-                    </span>{' '}
-                    and open the service.
-                  </>
-                )}
-              </p>
-
-              {/* Platform Grid */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] divide-y divide-black/[0.05] dark:divide-white/[0.06] overflow-hidden">
                 {(['youtube_music', 'spotify', 'melon', 'bugs'] as PlatformKey[]).map((key) => {
                   const p = PLATFORMS[key];
                   const isSelected = selectedPlatform === key;
 
                   return (
-                    <button
+                    <div
                       key={key}
-                      type="button"
                       onClick={() => handleSelectPlatform(key)}
-                      className={`relative flex flex-col p-3 rounded-2xl border text-left transition-all active:scale-95 cursor-pointer ${
+                      className={`px-3.5 py-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
                         isSelected
-                          ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-900 dark:border-white shadow-sm'
-                          : 'bg-zinc-50 dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                          ? 'bg-black/[0.03] dark:bg-white/[0.05]'
+                          : 'hover:bg-black/[0.02] dark:hover:bg-white/[0.03]'
                       }`}
                     >
-                      <div className="flex items-center justify-between w-full mb-1.5">
+                      <div className="flex items-center gap-3 min-w-0">
                         <span
-                          className={`text-[9px] font-black px-1.5 py-0.5 rounded-full border ${p.badgeColor}`}
-                        >
-                          {p.badge}
-                        </span>
-                        {isSelected && (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
-                        )}
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: p.accentColor }}
+                        />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[13px] font-bold text-zinc-900 dark:text-white truncate">
+                              {p.name}
+                            </span>
+                            <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500">
+                              {p.koreanName}
+                            </span>
+                          </div>
+                        </div>
                       </div>
 
-                      <span className="text-xs font-black text-zinc-900 dark:text-white truncate">
-                        {p.name}
-                      </span>
-                      <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 truncate">
-                        {p.koreanName}
-                      </span>
-                    </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a
+                          href={p.homeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyTracklist('platform');
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-[11px] font-bold flex items-center gap-1 transition-colors"
+                        >
+                          <span>{lang === 'ko' ? '열기' : 'Open'}</span>
+                          <ExternalLink className="w-3 h-3 text-zinc-400" />
+                        </a>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
+            </div>
 
-              {/* Active Platform Direct Launcher */}
-              {selectedPlatform !== 'apple_music' && (
-                <div className="mt-2.5 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: currentPlatformMeta.accentColor }}
-                    />
-                    <span className="text-xs font-black text-zinc-900 dark:text-white">
-                      {currentPlatformMeta.name} {lang === 'ko' ? '바로가기' : 'Direct Link'}
-                    </span>
-                  </div>
+            {/* 4. Quick Share & File Export Actions (2x2 Clean Grid) */}
+            <div className="space-y-1.5">
+              <span className="block text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 px-1">
+                {lang === 'ko' ? '빠른 복사 및 파일 저장' : 'Quick Copy & File Export'}
+              </span>
 
-                  <a
-                    href={currentPlatformMeta.homeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="py-1.5 px-3 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-black text-[11px] font-bold flex items-center gap-1 active:scale-95 transition-all"
-                  >
-                    <span>{lang === 'ko' ? '앱/웹 열기' : 'Open Service'}</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              )}
-            </section>
-
-            {/* ============================================================== */}
-            {/* Section 3: File Download & Link Sharing */}
-            {/* ============================================================== */}
-            <section className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <Layers className="w-4 h-4 text-zinc-400 shrink-0" />
-                <h3 className="text-xs font-black uppercase tracking-wider text-zinc-900 dark:text-white">
-                  {lang === 'ko' ? '파일 다운로드 & 링크 공유' : 'Download & Share'}
-                </h3>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                {/* 1. CSV Download */}
-                <button
-                  type="button"
-                  onClick={handleDownloadCsv}
-                  className="flex flex-col items-center justify-center p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 transition-all active:scale-95 text-center group cursor-pointer"
-                >
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
-                    <FileSpreadsheet className="w-4 h-4" />
-                  </div>
-                  <span className="text-[11px] font-bold text-zinc-900 dark:text-white">
-                    {lang === 'ko' ? 'CSV 다운' : 'Download CSV'}
-                  </span>
-                  <span className="text-[9px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    {lang === 'ko' ? '엑셀/보관용' : 'Spreadsheet'}
-                  </span>
-                </button>
-
-                {/* 2. Text Copy */}
+              <div className="grid grid-cols-2 gap-2">
+                {/* Copy Tracklist Text */}
                 <button
                   type="button"
                   onClick={() => handleCopyTracklist('text')}
-                  className="flex flex-col items-center justify-center p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 transition-all active:scale-95 text-center group cursor-pointer"
+                  className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] hover:bg-black/[0.02] dark:hover:bg-white/[0.04] flex items-center gap-2.5 text-left active:scale-[0.98] transition-all cursor-pointer"
                 >
-                  <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+                  <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
                     {copiedType === 'text' ? (
                       <Check className="w-4 h-4 text-emerald-500" />
                     ) : (
-                      <Copy className="w-4 h-4" />
+                      <Copy className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
                     )}
                   </div>
-                  <span className="text-[11px] font-bold text-zinc-900 dark:text-white">
-                    {copiedType === 'text'
-                      ? lang === 'ko'
-                        ? '복사 완료!'
-                        : 'Copied!'
-                      : lang === 'ko'
-                      ? '텍스트 복사'
-                      : 'Copy Text'}
-                  </span>
-                  <span className="text-[9px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    {playlist.length}
-                    {lang === 'ko' ? '곡 목록' : ' tracks'}
-                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[12px] font-bold text-zinc-900 dark:text-white truncate">
+                      {copiedType === 'text'
+                        ? lang === 'ko'
+                          ? '복사 완료'
+                          : 'Copied!'
+                        : lang === 'ko'
+                        ? '곡 목록 복사'
+                        : 'Copy Tracks'}
+                    </div>
+                    <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
+                      {playlist.length}
+                      {lang === 'ko' ? '곡 텍스트' : ' tracks text'}
+                    </div>
+                  </div>
                 </button>
 
-                {/* 3. Share Link */}
+                {/* Copy Share Link */}
                 <button
                   type="button"
                   onClick={handleCopyShareLink}
-                  className="flex flex-col items-center justify-center p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 transition-all active:scale-95 text-center group cursor-pointer"
+                  className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] hover:bg-black/[0.02] dark:hover:bg-white/[0.04] flex items-center gap-2.5 text-left active:scale-[0.98] transition-all cursor-pointer"
                 >
-                  <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+                  <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
                     {copiedType === 'link' ? (
                       <Check className="w-4 h-4 text-emerald-500" />
                     ) : (
-                      <Share2 className="w-4 h-4" />
+                      <Share2 className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
                     )}
                   </div>
-                  <span className="text-[11px] font-bold text-zinc-900 dark:text-white">
-                    {copiedType === 'link'
-                      ? lang === 'ko'
-                        ? '링크 복사됨!'
-                        : 'Link Copied!'
-                      : lang === 'ko'
-                      ? '공유 링크 복사'
-                      : 'Share Link'}
-                  </span>
-                  <span className="text-[9px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    {targetBpm} BPM
-                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[12px] font-bold text-zinc-900 dark:text-white truncate">
+                      {copiedType === 'link'
+                        ? lang === 'ko'
+                          ? '링크 복사됨'
+                          : 'Link Copied!'
+                        : lang === 'ko'
+                        ? '공유 링크 복사'
+                        : 'Share Link'}
+                    </div>
+                    <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
+                      {targetBpm} BPM URL
+                    </div>
+                  </div>
                 </button>
-              </div>
 
-              {/* M3U8 Download row */}
-              <div className="mt-2 flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800">
-                <span className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
-                  {lang === 'ko' ? '오프라인 플레이어용 (.m3u8)' : 'Offline Media Player (.m3u8)'}
-                </span>
+                {/* CSV Download */}
+                <button
+                  type="button"
+                  onClick={handleDownloadCsv}
+                  className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] hover:bg-black/[0.02] dark:hover:bg-white/[0.04] flex items-center gap-2.5 text-left active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                    <FileSpreadsheet className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[12px] font-bold text-zinc-900 dark:text-white truncate">
+                      {lang === 'ko' ? 'CSV 다운로드' : 'Download CSV'}
+                    </div>
+                    <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
+                      {lang === 'ko' ? '엑셀 / 음원변환용' : 'Spreadsheet'}
+                    </div>
+                  </div>
+                </button>
+
+                {/* M3U8 Download */}
                 <button
                   type="button"
                   onClick={handleDownloadM3u}
-                  className="py-1 px-2.5 rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                  className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/[0.06] dark:border-white/[0.08] hover:bg-black/[0.02] dark:hover:bg-white/[0.04] flex items-center gap-2.5 text-left active:scale-[0.98] transition-all cursor-pointer"
                 >
-                  <Download className="w-3 h-3" />
-                  <span>{lang === 'ko' ? 'M3U8 받기' : 'Download M3U8'}</span>
+                  <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                    <Download className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[12px] font-bold text-zinc-900 dark:text-white truncate">
+                      {lang === 'ko' ? 'M3U8 다운로드' : 'Download M3U8'}
+                    </div>
+                    <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
+                      {lang === 'ko' ? '오프라인 플레이어' : 'Media Player'}
+                    </div>
+                  </div>
                 </button>
               </div>
-            </section>
+            </div>
           </div>
 
-          {/* Bottom Close Button */}
-          <div className="p-4 bg-zinc-50 dark:bg-zinc-900/90 border-t border-zinc-200 dark:border-zinc-800">
+          {/* Bottom Safe-Area Action Bar */}
+          <div className="px-5 py-3 bg-white/80 dark:bg-[#1C1C1E]/90 backdrop-blur-xl border-t border-black/[0.06] dark:border-white/[0.08] shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="w-full py-3 rounded-2xl bg-zinc-900 text-white dark:bg-white dark:text-black text-xs font-black shadow-md active:scale-98 transition-transform cursor-pointer"
+              style={{
+                backgroundColor: zoneColor,
+                color: isLime ? '#000000' : '#FFFFFF',
+              }}
+              className="w-full h-11 rounded-full text-[13px] font-black shadow-xs active:scale-[0.98] transition-transform cursor-pointer flex items-center justify-center gap-1"
             >
-              {lang === 'ko' ? '닫기' : 'Close'}
+              <span>{lang === 'ko' ? '완료' : 'Done'}</span>
+              <ChevronRight className="w-4 h-4 opacity-70" />
             </button>
           </div>
         </motion.div>
