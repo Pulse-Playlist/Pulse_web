@@ -788,19 +788,23 @@ export default function Page() {
   return (
     <div className="min-h-screen w-full bg-zinc-200 dark:bg-[#070709] flex justify-center items-start transition-colors duration-200">
       {/* Centered Mobile Container strictly constrained on desktop */}
-      <div className="max-w-[430px] w-full mx-auto min-h-dvh shadow-2xl border-x border-zinc-300/80 dark:border-zinc-800/80 bg-white dark:bg-[#000000] relative flex flex-col pb-36">
+      <div
+        className={`max-w-[430px] w-full mx-auto min-h-dvh overflow-x-hidden shadow-2xl border-x border-zinc-300/80 dark:border-zinc-800/80 bg-white dark:bg-[#000000] relative flex flex-col ${
+          currentPlayingSong ? 'pb-36' : 'pb-24'
+        }`}
+      >
         {/* Global In-App Toast */}
         <Toast toast={toast} onClose={() => setToast(null)} />
 
-        {/* 4-Step Screen Routing with Smooth Spring Transitions */}
+        {/* 4-Step Screen Routing with Smooth Native Transitions */}
         {isReady && (
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
-            initial={{ opacity: 0, y: 14, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.985 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.7 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
             className="flex-1 flex flex-col w-full"
           >
             {step === 'home' && (

@@ -14,7 +14,6 @@ import {
   Music2,
   Sparkles,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { ThemeToggle } from './ThemeToggle';
 import { playTapKick, playPopSound } from '@/lib/soundEffects';
 import {
@@ -201,7 +200,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   }, [songsPool]);
 
   return (
-    <div className="flex flex-col min-h-dvh select-none pb-36 px-5 pt-3 space-y-7">
+    <div className="flex flex-col min-h-dvh select-none pb-24 px-5 pt-3 space-y-7">
       {/* ========================================================
           Apple HIG Large Title Header Bar
           ======================================================== */}
@@ -244,18 +243,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 playPopSound(true);
                 onOpenArtistSelect();
               }}
-              className="w-9 h-9 rounded-full bg-zinc-200/75 dark:bg-zinc-800/85 backdrop-blur-md border border-[#C4FF00]/50 dark:border-[#C4FF00]/60 flex items-center justify-center cursor-pointer active:scale-95 transition-transform shadow-xs relative"
-              aria-label="최애 아티스트 취향 버블"
-              title={lang === 'ko' ? '최애 아티스트 취향 버블' : 'Artist Taste Bubbles'}
+              className="w-9 h-9 rounded-full bg-zinc-200/75 dark:bg-zinc-800/85 backdrop-blur-md border border-black/5 dark:border-white/10 flex items-center justify-center cursor-pointer active:scale-95 transition-transform shadow-xs relative"
+              aria-label="최애 아티스트 취향 설정"
+              title={lang === 'ko' ? '최애 아티스트 취향 설정' : 'Artist Taste Profile'}
             >
               {preferredArtistsCount > 0 ? (
-                <span className="text-[11px] font-black text-[#00A344] dark:text-[#C4FF00]">
+                <span className="text-[11px] font-black text-zinc-900 dark:text-[#C4FF00]">
                   {preferredArtistsCount}
                 </span>
               ) : (
-                <span className="text-sm">🫧</span>
+                <Sparkles className="w-4 h-4 text-zinc-700 dark:text-[#C4FF00]" />
               )}
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#C4FF00] border-2 border-white dark:border-black" />
             </button>
           )}
         </div>
@@ -269,48 +267,28 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           {lang === 'ko' ? '맞춤 추천' : 'Top Picks for You'}
         </h2>
 
-        <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 scrollbar-none -mx-5 px-5 pb-2">
+        <div className="flex overflow-x-auto snap-x snap-mandatory gap-3.5 scrollbar-none -mx-5 px-5 pb-2">
           {/* Card 1 — Primary "Create Cadence Mix" Card */}
           <div
             onClick={() => {
               playTapKick(1);
               onStart();
             }}
-            className="w-[256px] h-[340px] rounded-[26px] p-4 flex flex-col justify-between bg-[#161618] dark:bg-[#141416] text-white shadow-xl border border-black/5 dark:border-white/10 shrink-0 snap-start cursor-pointer group relative overflow-hidden"
+            className="w-[220px] rounded-[22px] p-3.5 flex flex-col justify-between bg-[#161618] dark:bg-[#141416] text-white shadow-md border border-black/5 dark:border-white/10 shrink-0 snap-start cursor-pointer group relative overflow-hidden"
           >
             {/* Top inner square artwork box */}
-            <div className="w-full aspect-square rounded-[18px] bg-gradient-to-br from-[#1F1F23] to-[#0D0D10] border border-white/10 flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
-              {/* Ambient radial glow */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#C4FF00]/20 via-transparent to-transparent pointer-events-none" />
+            <div className="w-full aspect-square rounded-[14px] bg-zinc-900 border border-white/[0.07] flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
+              <Star className="w-14 h-14 text-[#C4FF00] fill-[#C4FF00] group-hover:scale-[1.02] transition-transform duration-200" />
 
-              {/* Pulsing ECG line behind emblem */}
-              <div className="absolute inset-x-0 h-16 pointer-events-none opacity-40">
-                <svg viewBox="0 0 160 50" fill="none" className="w-full h-full stroke-[#C4FF00]">
-                  <motion.path
-                    d="M 5 25 L 45 25 L 52 10 L 60 40 L 70 5 L 82 45 L 90 20 L 98 30 L 105 25 L 155 25"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    initial={{ pathLength: 0.2, pathOffset: 0 }}
-                    animate={{ pathOffset: [0, 1] }}
-                    transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
-                  />
-                </svg>
-              </div>
-
-              {/* Centerpiece: Bold PULSE emblem / Neon Lime Star + 160 BPM dynamic badge */}
-              <div className="relative z-10 flex flex-col items-center gap-2">
-                <div className="w-14 h-14 rounded-2xl bg-[#C4FF00]/15 border border-[#C4FF00]/40 flex items-center justify-center shadow-lg shadow-[#C4FF00]/20 group-hover:scale-110 transition-transform duration-300">
-                  <Star className="w-7 h-7 text-[#C4FF00] fill-[#C4FF00]" />
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-black/80 backdrop-blur-md border border-[#C4FF00]/40 text-[#C4FF00] font-black text-[11px] tracking-wider shadow-sm">
+              <div className="absolute bottom-2 left-2">
+                <span className="bg-white/10 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-white/10">
                   160 BPM
                 </span>
               </div>
 
-              {/* + Create overlay on hover/tap */}
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
-                <span className="px-3.5 py-1.5 rounded-full bg-[#C4FF00] text-black font-black text-xs shadow-lg flex items-center gap-1.5 scale-95 group-hover:scale-100 transition-transform">
+              {/* + Create overlay on hover */}
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+                <span className="px-3 py-1 rounded-full bg-[#C4FF00] text-black font-black text-xs shadow-md flex items-center gap-1.5 scale-95 group-hover:scale-100 transition-transform">
                   <Plus className="w-3.5 h-3.5 stroke-[3]" />
                   {lang === 'ko' ? '만들기' : 'Create'}
                 </span>
@@ -322,46 +300,41 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <p className="text-[11px] font-semibold text-zinc-400">
                 {lang === 'ko' ? '맞춤 러닝 케이던스' : 'Made for Your Pace'}
               </p>
-              <div className="text-[16px] font-black text-white leading-snug mt-0.5 flex items-center justify-between">
+              <div className="text-[15px] font-black text-white leading-snug mt-0.5 flex items-center justify-between">
                 <span>{lang === 'ko' ? '러닝 플레이리스트 만들기' : 'Create Cadence Mix'}</span>
-                <ArrowRight className="w-4 h-4 text-[#C4FF00] group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-3.5 h-3.5 text-[#C4FF00] group-hover:translate-x-1 transition-transform" />
               </div>
-              <p className="text-[12px] text-zinc-400 line-clamp-2 mt-0.5 leading-relaxed">
+              <p className="text-[11px] text-zinc-400 line-clamp-2 mt-0.5 leading-relaxed">
                 {lang === 'ko'
                   ? `${totalSongsCount.toLocaleString()}곡 중 내 보폭 BPM에 딱 맞는 30곡 생성`
-                  : `Sync 30 tracks from ${totalSongsCount.toLocaleString()} songs to your exact stride.`}
+                  : `Sync 30 tracks from ${totalSongsCount.toLocaleString()} songs to your stride.`}
               </p>
             </div>
           </div>
 
-          {/* Card 2 — "Artist Taste Bubbles" Full-Bleed Gradient Card */}
+          {/* Card 2 — "Artist Taste Bubbles" Minimal Geometric Card */}
           <div
             onClick={() => {
               playPopSound(true);
               onOpenArtistSelect?.();
             }}
-            className="w-[256px] h-[340px] rounded-[26px] p-5 flex flex-col justify-between bg-gradient-to-br from-[#0044FF] via-[#1E293B] to-black text-white shadow-xl border border-white/10 shrink-0 snap-start cursor-pointer group relative overflow-hidden"
+            className="w-[220px] rounded-[22px] p-3.5 flex flex-col justify-between bg-[#161618] dark:bg-[#141416] text-white shadow-md border border-black/5 dark:border-white/10 shrink-0 snap-start cursor-pointer group relative overflow-hidden"
           >
-            {/* Upper area with decorative geometric rays & floating artist circles */}
-            <div className="relative w-full aspect-square rounded-[18px] bg-black/30 backdrop-blur-sm border border-white/10 overflow-hidden flex items-center justify-center">
-              <div className="absolute -top-8 -right-8 w-32 h-32 bg-[#C4FF00]/25 rounded-full blur-2xl pointer-events-none" />
-              <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-blue-500/25 rounded-full blur-2xl pointer-events-none" />
-              <div className="relative z-10 flex flex-col items-center gap-2.5">
-                <div className="flex items-center -space-x-2.5">
-                  <div className="w-11 h-11 rounded-full bg-blue-500/80 border-2 border-white/30 flex items-center justify-center text-sm shadow-md">
-                    🏃
-                  </div>
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-[#C4FF00] to-lime-300 text-black font-black text-xl border-2 border-white/60 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
-                    🫧
-                  </div>
-                  <div className="w-11 h-11 rounded-full bg-indigo-500/80 border-2 border-white/30 flex items-center justify-center text-sm shadow-md">
-                    🎧
-                  </div>
+            {/* Inner square graphic box */}
+            <div className="w-full aspect-square rounded-[14px] bg-gradient-to-br from-zinc-800 to-zinc-950 border border-white/[0.07] flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
+              {/* Minimal concentric rings / geometric accent */}
+              <div className="absolute w-28 h-28 rounded-full border border-white/5 pointer-events-none" />
+              <div className="absolute w-20 h-20 rounded-full border border-white/10 pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col items-center gap-1.5">
+                <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-[1.02] transition-transform duration-200">
+                  <Sparkles className="w-6 h-6 text-[#C4FF00]" />
                 </div>
-                <span className="px-3 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-[#C4FF00]/40 text-[#C4FF00] font-black text-[11px] shadow-sm">
-                  {preferredArtistsCount > 0
-                    ? `${preferredArtistsCount} ARTISTS`
-                    : (lang === 'ko' ? '취향 버블' : 'TASTE BUBBLES')}
+              </div>
+
+              <div className="absolute bottom-2 left-2">
+                <span className="bg-white/10 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-white/10">
+                  {preferredArtistsCount > 0 ? `${preferredArtistsCount} ARTISTS` : 'TASTE PROFILE'}
                 </span>
               </div>
             </div>
@@ -371,17 +344,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <p className="text-[11px] font-semibold text-[#C4FF00]">
                 {lang === 'ko' ? '취향 아티스트' : 'Taste Profile'}
               </p>
-              <h3 className="text-[17px] font-black text-white mt-0.5">
+              <h3 className="text-[15px] font-black text-white mt-0.5 leading-snug">
                 {lang === 'ko' ? '최애 아티스트 버블' : 'Artist Taste Bubbles'}
               </h3>
-              <p className="text-[12px] text-zinc-300 line-clamp-2 mt-0.5 leading-relaxed">
+              <p className="text-[11px] text-zinc-400 line-clamp-2 mt-0.5 leading-relaxed">
                 {preferredArtistsCount > 0
                   ? lang === 'ko'
                     ? `${preferredArtistsCount}팀의 최애 아티스트 취향 반영 중`
                     : `${preferredArtistsCount} favorite artists active`
                   : lang === 'ko'
-                  ? '좋아하는 아티스트를 골라 플레이리스트에 반영하세요'
-                  : 'Pick artists you love to personalize your cadence mix'}
+                  ? '좋아하는 아티스트를 골라 플레이리스트에 반영'
+                  : 'Pick artists to personalize your cadence mix'}
               </p>
             </div>
           </div>
@@ -398,26 +371,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   playPopSound();
                   onSelectPlaylist(pl);
                 }}
-                className="w-[256px] h-[340px] rounded-[26px] p-4 flex flex-col justify-between bg-[#161618] dark:bg-[#141416] text-white shadow-xl border border-black/5 dark:border-white/10 shrink-0 snap-start cursor-pointer group relative overflow-hidden"
+                className="w-[220px] rounded-[22px] p-3.5 flex flex-col justify-between bg-[#161618] dark:bg-[#141416] text-white shadow-md border border-black/5 dark:border-white/10 shrink-0 snap-start cursor-pointer group relative overflow-hidden"
               >
                 {/* Top inner artwork box */}
-                <div className="w-full aspect-square rounded-[18px] bg-zinc-900 overflow-hidden relative shadow-inner border border-white/10">
+                <div className="w-full aspect-square rounded-[14px] bg-zinc-900 overflow-hidden relative shadow-inner border border-white/[0.07]">
                   <Image
                     src={cover}
                     alt={pl.name}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute top-2.5 left-2.5">
+                  <div className="absolute top-2 left-2">
                     <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-full ${zoneStyle.badgeBg} shadow-md`}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${zoneStyle.badgeBg} shadow-xs`}
                     >
                       {pl.bpm} BPM
                     </span>
                   </div>
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
-                      <Play className="w-5 h-5 fill-black ml-0.5" />
+                    <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+                      <Play className="w-4 h-4 fill-black ml-0.5" />
                     </div>
                   </div>
                 </div>
@@ -427,10 +400,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   <p className="text-[11px] font-semibold text-zinc-400 truncate">
                     {pl.bpm} BPM Cadence · {pl.author}
                   </p>
-                  <h3 className="text-[16px] font-black text-white leading-snug mt-0.5 truncate group-hover:text-[#C4FF00] transition-colors">
+                  <h3 className="text-[15px] font-black text-white leading-snug mt-0.5 truncate group-hover:text-[#C4FF00] transition-colors">
                     {pl.name}
                   </h3>
-                  <p className="text-[12px] text-zinc-400 line-clamp-2 mt-0.5 leading-relaxed">
+                  <p className="text-[11px] text-zinc-400 line-clamp-2 mt-0.5 leading-relaxed">
                     {pl.songs && pl.songs.length > 0
                       ? pl.songs.slice(0, 3).map((s) => getSongTitle(s, lang)).join(' · ')
                       : lang === 'ko'
@@ -459,7 +432,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
           </div>
 
-          {/* Compact BPM Zone filter pills */}
+          {/* Compact BPM Zone filter pills with Apple HIG colored dots */}
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
             <button
               type="button"
@@ -467,7 +440,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 playPopSound();
                 setActiveFilter('all');
               }}
-              className={`px-3 py-1 rounded-full text-xs font-black shrink-0 transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer ${
                 activeFilter === 'all'
                   ? 'bg-zinc-900 text-white dark:bg-white dark:text-black shadow-xs'
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
@@ -481,13 +454,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 playPopSound();
                 setActiveFilter('under130');
               }}
-              className={`px-3 py-1 rounded-full text-xs font-black shrink-0 transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center ${
                 activeFilter === 'under130'
-                  ? 'bg-[#C4FF00] text-black shadow-xs'
+                  ? 'bg-zinc-900 text-white dark:bg-white dark:text-black shadow-xs'
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
               }`}
             >
-              🟢 ~130
+              <span className="w-2 h-2 rounded-full bg-[#C4FF00] inline-block mr-1.5 shrink-0" />
+              ~130 BPM
             </button>
             <button
               type="button"
@@ -495,13 +469,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 playPopSound();
                 setActiveFilter('131to160');
               }}
-              className={`px-3 py-1 rounded-full text-xs font-black shrink-0 transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center ${
                 activeFilter === '131to160'
-                  ? 'bg-[#3B82F6] text-white shadow-xs'
+                  ? 'bg-zinc-900 text-white dark:bg-white dark:text-black shadow-xs'
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
               }`}
             >
-              🔵 131~160
+              <span className="w-2 h-2 rounded-full bg-[#3B82F6] inline-block mr-1.5 shrink-0" />
+              131~160 BPM
             </button>
             <button
               type="button"
@@ -509,13 +484,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 playPopSound();
                 setActiveFilter('over161');
               }}
-              className={`px-3 py-1 rounded-full text-xs font-black shrink-0 transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 transition-all cursor-pointer flex items-center ${
                 activeFilter === 'over161'
-                  ? 'bg-[#FF4B4B] text-white shadow-xs'
+                  ? 'bg-zinc-900 text-white dark:bg-white dark:text-black shadow-xs'
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
               }`}
             >
-              🔴 161+
+              <span className="w-2 h-2 rounded-full bg-[#FF4B4B] inline-block mr-1.5 shrink-0" />
+              161+ BPM
             </button>
           </div>
         </div>
@@ -530,7 +506,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               >
                 {col.map((song, rowIdx) => {
                   const bpm = song.running_bpm || song.raw_bpm || 150;
-                  const zoneStyle = getBpmZoneStyle(bpm);
                   const isStarred =
                     (preferredArtists &&
                       preferredArtists.some((pa) =>
@@ -591,8 +566,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         </div>
                       </div>
 
-                      {/* Song Title & Subtitle */}
-                      <div className="flex-1 min-w-0">
+                      {/* Song Title & Subtitle (Clean layout without redundant BPM to prevent truncation) */}
+                      <div className="flex-1 min-w-0 pr-1">
                         <h4
                           className={`text-[14px] font-bold truncate transition-colors ${
                             isCurrentTrack
@@ -603,16 +578,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                           {getSongTitle(song, lang)}
                         </h4>
                         <p className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-                          {getSongArtist(song, lang)} · {bpm} BPM
+                          {getSongArtist(song, lang)}
                         </p>
                       </div>
 
-                      {/* Right: BPM badge & More button */}
+                      {/* Right: Compact BPM tag & More button */}
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span
-                          className={`text-[10px] font-black px-2 py-0.5 rounded-full ${zoneStyle.bg} ${zoneStyle.text} border ${zoneStyle.border}`}
-                        >
-                          {bpm} BPM
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/90 text-zinc-600 dark:text-zinc-300">
+                          {bpm}
                         </span>
                         <button
                           type="button"
@@ -660,9 +633,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </span>
         </div>
 
-        {/* Square Album Horizontal Scroll-Snap Container */}
+        {/* Square Album Horizontal Scroll-Snap Container (w-[148px] for optimal mobile viewport proportion) */}
         {filteredPlaylists.length > 0 ? (
-          <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 scrollbar-none -mx-5 px-5 pb-4">
+          <div className="flex overflow-x-auto snap-x snap-mandatory gap-3.5 scrollbar-none -mx-5 px-5 pb-4">
             {filteredPlaylists.map((pl) => {
               const cover = getPlaylistCoverUrl(pl.bpm);
               const currentLikes =
@@ -677,16 +650,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     playPopSound();
                     onSelectPlaylist(pl);
                   }}
-                  className="w-[162px] shrink-0 snap-start cursor-pointer group"
+                  className="w-[148px] shrink-0 snap-start cursor-pointer group"
                 >
                   {/* Square Artwork */}
-                  <div className="w-[162px] h-[162px] rounded-[20px] overflow-hidden relative bg-zinc-900 border border-black/5 dark:border-white/10 shadow-md group-hover:scale-[1.02] transition-transform">
+                  <div className="w-[148px] h-[148px] rounded-[18px] overflow-hidden relative bg-zinc-900 border border-black/5 dark:border-white/10 shadow-sm group-hover:scale-[1.02] transition-transform">
                     <Image src={cover} alt={pl.name} fill className="object-cover" />
 
                     {/* Top-left pill badge */}
                     <div className="absolute top-2 left-2">
                       <span
-                        className={`text-[10px] font-black px-2 py-0.5 rounded-full ${zoneStyle.badgeBg} shadow-md`}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${zoneStyle.badgeBg} shadow-xs`}
                       >
                         {pl.bpm} BPM
                       </span>
@@ -696,7 +669,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     <button
                       type="button"
                       onClick={(e) => handleLike(pl.id, pl.likes, e)}
-                      className={`absolute bottom-2 right-2 px-2 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 backdrop-blur-md transition-all active:scale-90 cursor-pointer shadow-md ${
+                      className={`absolute bottom-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 backdrop-blur-md transition-all active:scale-90 cursor-pointer shadow-xs ${
                         isLiked
                           ? 'bg-rose-500 text-white'
                           : 'bg-black/60 text-white/90 hover:bg-black/80 border border-white/10'
@@ -712,17 +685,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
                     {/* Play hover overlay */}
                     <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                      <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-lg">
-                        <Play className="w-5 h-5 fill-black ml-0.5" />
+                      <div className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center shadow-md">
+                        <Play className="w-4 h-4 fill-black ml-0.5" />
                       </div>
                     </div>
                   </div>
 
                   {/* Below square artwork */}
-                  <h3 className="text-[13px] font-bold text-zinc-900 dark:text-white truncate mt-2 group-hover:text-[#00A344] dark:group-hover:text-[#C4FF00] transition-colors">
+                  <h3 className="text-[13px] font-bold text-zinc-900 dark:text-white truncate mt-1.5 group-hover:text-[#00A344] dark:group-hover:text-[#C4FF00] transition-colors">
                     {pl.name}
                   </h3>
-                  <p className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400 truncate">
+                  <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 truncate">
                     {pl.author} · {pl.songs.length}
                     {lang === 'ko' ? '곡' : ' tracks'}
                   </p>

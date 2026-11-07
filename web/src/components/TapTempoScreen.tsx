@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, RotateCcw, Check, Sparkles, Flame, Activity } from 'lucide-react';
+import { ChevronLeft, RotateCcw, Check, Sparkles, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { playTapKick } from '@/lib/soundEffects';
 import { AppLanguage } from '@/types/song';
@@ -120,13 +120,13 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
           let badgeColor = '#C4FF00';
 
           if (currentCombo >= 6) {
-            badgeText = `🔥 ${currentCombo} COMBO!`;
+            badgeText = `${currentCombo} STREAK`;
             badgeColor = '#FF4B4B';
           } else if (variance < 40) {
-            badgeText = '⚡ PERFECT RHYTHM!';
+            badgeText = 'PERFECT RHYTHM';
             badgeColor = '#C4FF00';
           } else if (variance < 85) {
-            badgeText = '✨ GOOD TEMPO!';
+            badgeText = 'GOOD TEMPO';
             badgeColor = '#3B82F6';
           } else {
             badgeText = `TAP ${currentCombo}`;
@@ -141,7 +141,7 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
         }
       } else {
         const badgeId = Date.now();
-        setFloatingBadges([{ id: badgeId, text: 'FIRST BEAT!', color: '#C4FF00' }]);
+        setFloatingBadges([{ id: badgeId, text: 'FIRST BEAT', color: '#C4FF00' }]);
         setTimeout(() => {
           setFloatingBadges((b) => b.filter((item) => item.id !== badgeId));
         }, 900);
@@ -153,15 +153,7 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
   const hasEnoughTaps = taps.length >= 2 && measuredBpm !== null;
 
   return (
-    <div className="flex flex-col min-h-dvh justify-between p-6 pb-36 select-none relative overflow-hidden">
-      {/* Ambient Top Gradient Glow */}
-      <div
-        className="pointer-events-none absolute top-0 inset-x-0 h-72 opacity-25 dark:opacity-30 blur-3xl transition-colors duration-700"
-        style={{
-          background: `radial-gradient(ellipse at 50% -20%, ${activeColor} 0%, transparent 70%)`,
-        }}
-      />
-
+    <div className="flex flex-col gap-5 px-5 pt-3 pb-24 select-none relative overflow-x-hidden">
       {/* Top Bar */}
       <header className="z-10 pt-1">
         {/* Row 1: Back Button, Brand Pill, Reset Button */}
@@ -229,20 +221,20 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
       </header>
 
       {/* Main Studio Tap Pad Section */}
-      <main className="flex-1 flex flex-col items-center justify-center text-center py-4 z-10">
+      <main className="flex flex-col items-center justify-center text-center py-2 z-10">
         {/* Central Rhythm Game Tap Pad Container */}
-        <div className="relative flex items-center justify-center my-4">
+        <div className="relative flex items-center justify-center my-2">
           {/* Floating Rhythm Combo Badges */}
-          <div className="absolute -top-12 inset-x-0 flex flex-col items-center pointer-events-none z-20">
+          <div className="absolute -top-10 inset-x-0 flex flex-col items-center pointer-events-none z-20">
             <AnimatePresence>
               {floatingBadges.map((badge) => (
                 <motion.div
                   key={badge.id}
                   initial={{ y: 0, opacity: 0, scale: 0.8 }}
-                  animate={{ y: -30, opacity: 1, scale: 1.1 }}
-                  exit={{ y: -50, opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.65, ease: 'easeOut' }}
-                  className="px-3.5 py-1 rounded-full text-xs font-black shadow-lg backdrop-blur-md"
+                  animate={{ y: -26, opacity: 1, scale: 1.05 }}
+                  exit={{ y: -45, opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  className="px-3.5 py-1 rounded-full text-[11px] font-black shadow-sm backdrop-blur-md tracking-wider uppercase"
                   style={{
                     backgroundColor: badge.color,
                     color: badge.color === '#C4FF00' ? '#000000' : '#ffffff',
@@ -260,11 +252,11 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
               {shockwaves.map((wave) => (
                 <motion.div
                   key={wave.id}
-                  initial={{ scale: 0.9, opacity: 0.95 }}
-                  animate={{ scale: 2.1, opacity: 0 }}
+                  initial={{ scale: 0.9, opacity: 0.8 }}
+                  animate={{ scale: 1.8, opacity: 0 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.65, ease: 'easeOut' }}
-                  className="absolute w-64 h-64 rounded-full border-2 pointer-events-none"
+                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  className="absolute w-56 h-56 rounded-full border-2 pointer-events-none"
                   style={{ borderColor: activeColor }}
                 />
               ))}
@@ -272,45 +264,30 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
           </div>
 
           {/* Rhythm Game Interactive Central Apple HIG Studio Pad */}
-          <motion.button
+          <button
             type="button"
             onClick={handleTap}
-            whileTap={{ scale: 0.92, rotate: [-1, 1.5, 0] }}
-            animate={{
-              boxShadow: hasEnoughTaps
-                ? `0 0 35px ${activeColor}40`
-                : '0 10px 30px rgba(0, 0, 0, 0.12)',
-            }}
-            transition={{ duration: 0.2 }}
-            className={`relative w-64 h-64 rounded-full flex flex-col items-center justify-center p-6 border-2 cursor-pointer select-none transition-colors duration-200 bg-white/80 dark:bg-zinc-900/85 backdrop-blur-2xl shadow-2xl ${
+            className={`relative w-56 h-56 rounded-full flex flex-col items-center justify-center p-6 border-2 cursor-pointer select-none transition-transform bg-zinc-100 dark:bg-zinc-900 shadow-md active:scale-95 ${
               hasEnoughTaps ? '' : 'border-black/10 dark:border-white/10'
             }`}
             style={{
               borderColor: hasEnoughTaps ? activeColor : undefined,
             }}
           >
-            {/* Combo streak flame indicator */}
+            {/* Combo streak clean indicator */}
             {comboCount >= 3 && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute top-6 flex items-center gap-1 text-[11px] font-black"
+              <div
+                className="absolute top-5 flex items-center gap-1 text-[11px] font-black tracking-wider uppercase"
                 style={{ color: activeColor }}
               >
-                <Flame className="w-3.5 h-3.5 fill-current animate-pulse" />
+                <Activity className="w-3.5 h-3.5" />
                 <span>{comboCount} STREAK</span>
-              </motion.div>
+              </div>
             )}
 
-            <motion.span
-              key={measuredBpm || 'tap'}
-              initial={{ scale: 0.92 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-              className="text-6xl font-black tracking-tighter text-zinc-900 dark:text-white font-display"
-            >
+            <span className="text-6xl font-black tracking-tighter text-zinc-900 dark:text-white font-display">
               {measuredBpm ? measuredBpm : 'TAP'}
-            </motion.span>
+            </span>
 
             <span
               className="text-xs font-black px-3 py-0.5 rounded-full mt-2 shadow-sm transition-colors duration-200"
@@ -329,7 +306,7 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
             </span>
 
             {/* Tap progress indicator dots */}
-            <div className="absolute bottom-6 flex items-center gap-1.5">
+            <div className="absolute bottom-5 flex items-center gap-1.5">
               {[1, 2, 3, 4].map((step) => (
                 <div
                   key={step}
@@ -344,47 +321,43 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
                 />
               ))}
             </div>
-          </motion.button>
+          </button>
         </div>
 
         {/* Tip & Reset Button */}
-        <div className="flex flex-col items-center gap-2 mt-4">
+        <div className="flex flex-col items-center gap-2 mt-3">
           <p className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400">
             {hasEnoughTaps
               ? lang === 'ko'
-                ? '💡 꾸준히 탭할수록 더 정밀한 평균 케이던스가 계산됩니다'
-                : '💡 Keep tapping for a more precise average BPM'
+                ? '꾸준히 탭할수록 더 정밀한 평균 케이던스가 계산됩니다.'
+                : 'Keep tapping for a more precise average BPM.'
               : lang === 'ko'
-              ? '최소 2번 이상 러닝 리듬에 맞춰 탭해 주세요'
-              : 'Tap at least 2 times to measure tempo'}
+              ? '최소 2번 이상 러닝 리듬에 맞춰 탭해 주세요.'
+              : 'Tap at least 2 times to measure tempo.'}
           </p>
 
           {taps.length > 0 && (
-            <motion.button
+            <button
               type="button"
               onClick={resetTaps}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-1.5 text-xs font-bold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white mt-1 py-1.5 px-3.5 rounded-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-black/5 dark:border-white/10 transition-colors cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 text-xs font-bold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white mt-1 py-1.5 px-3.5 rounded-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-black/5 dark:border-white/10 transition-colors cursor-pointer shadow-sm active:scale-95"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>{lang === 'ko' ? '기록 초기화' : 'Reset'}</span>
-            </motion.button>
+            </button>
           )}
         </div>
       </main>
 
       {/* Bottom CTA Capsule Button */}
-      <footer className="pt-2 z-10">
-        <motion.button
+      <footer className="mt-2 z-10">
+        <button
           type="button"
           disabled={!hasEnoughTaps}
           onClick={() => onConfirmBpm(currentEffectiveBpm)}
-          whileHover={hasEnoughTaps ? { scale: 1.02 } : {}}
-          whileTap={hasEnoughTaps ? { scale: 0.96 } : {}}
-          className={`w-full py-4 px-6 rounded-full font-black text-base transition-all flex items-center justify-center gap-2 ${
+          className={`w-full py-4 px-6 rounded-full font-black text-base transition-all flex items-center justify-center gap-2 shadow-sm ${
             hasEnoughTaps
-              ? 'bg-[#C4FF00] hover:bg-[#B8F500] text-black shadow-lg shadow-[#C4FF00]/25 cursor-pointer'
+              ? 'bg-[#C4FF00] hover:bg-[#B8F500] text-black active:scale-[0.98] cursor-pointer'
               : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'
           }`}
         >
@@ -398,7 +371,7 @@ export const TapTempoScreen: React.FC<TapTempoScreenProps> = ({
               ? '박자에 맞춰 탭해 주세요'
               : 'Tap to the rhythm'}
           </span>
-        </motion.button>
+        </button>
       </footer>
     </div>
   );

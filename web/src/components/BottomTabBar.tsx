@@ -79,7 +79,7 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
       aria-label="Bottom Navigation"
       className="fixed bottom-3 inset-x-0 z-50 flex justify-center pointer-events-none px-4"
     >
-      <div className="pointer-events-auto w-full max-w-[398px] h-[62px] p-1.5 rounded-full bg-white/85 dark:bg-zinc-900/88 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.12] shadow-[0_12px_36px_rgba(0,0,0,0.16)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.65)] flex items-center justify-between">
+      <div className="pointer-events-auto w-full max-w-[390px] h-[56px] p-1 rounded-full bg-white/88 dark:bg-zinc-900/90 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.12] shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_10px_34px_rgba(0,0,0,0.55)] flex items-center justify-between">
         {TABS.map((tab) => {
           const active = tab.isActive(activeStep);
           const Icon = tab.icon;
@@ -109,21 +109,21 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
 
               <div className="relative z-10 flex flex-col items-center justify-center">
                 <Icon
-                  className={`w-5 h-5 transition-colors duration-150 ${
+                  className={`w-[18px] h-[18px] transition-colors duration-150 ${
                     active
                       ? isDark
-                        ? 'text-[#C4FF00] drop-shadow-[0_0_6px_rgba(196,255,0,0.45)]'
-                        : 'text-zinc-950 font-black'
+                        ? 'text-[#C4FF00]'
+                        : 'text-zinc-950'
                       : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
                   }`}
                   strokeWidth={active ? 2.5 : 2}
                 />
                 <span
-                  className={`text-[10px] tracking-tight leading-none mt-0.5 flex items-center gap-0.5 transition-colors duration-150 ${
+                  className={`text-[10px] font-semibold tracking-tight leading-none mt-0.5 flex items-center gap-0.5 transition-colors duration-150 ${
                     active
                       ? isDark
-                        ? 'text-[#C4FF00] font-bold'
-                        : 'text-zinc-950 font-black'
+                        ? 'text-[#C4FF00]'
+                        : 'text-zinc-950 font-bold'
                       : 'text-zinc-500 dark:text-zinc-400 font-medium'
                   }`}
                 >

@@ -24,10 +24,7 @@ interface CategoryItem {
   id: GenreTag;
   name: Record<AppLanguage, string>;
   sub: string;
-  icon: string;
   accentColor: string;
-  gradientDark: string;
-  gradientLight: string;
 }
 
 const CATEGORIES: CategoryItem[] = [
@@ -35,64 +32,43 @@ const CATEGORIES: CategoryItem[] = [
     id: 'hiphop',
     name: { ko: '힙합', en: 'HIP-HOP' },
     sub: 'HIP-HOP',
-    icon: '🎤',
     accentColor: '#C4FF00',
-    gradientDark: 'from-lime-950/40 via-zinc-900/80 to-zinc-900/95',
-    gradientLight: 'from-lime-100/60 via-zinc-100/90 to-white',
   },
   {
     id: 'rock',
     name: { ko: '락', en: 'ROCK' },
     sub: 'ROCK',
-    icon: '🎸',
     accentColor: '#FF4B4B',
-    gradientDark: 'from-red-950/40 via-zinc-900/80 to-zinc-900/95',
-    gradientLight: 'from-red-100/60 via-zinc-100/90 to-white',
   },
   {
     id: 'kpop',
     name: { ko: '케이팝', en: 'K-POP' },
     sub: 'K-POP',
-    icon: '✨',
     accentColor: '#3B82F6',
-    gradientDark: 'from-blue-950/40 via-zinc-900/80 to-zinc-900/95',
-    gradientLight: 'from-blue-100/60 via-zinc-100/90 to-white',
   },
   {
     id: 'band',
     name: { ko: '밴드', en: 'BAND' },
     sub: 'BAND',
-    icon: '🥁',
     accentColor: '#A855F7',
-    gradientDark: 'from-purple-950/40 via-zinc-900/80 to-zinc-900/95',
-    gradientLight: 'from-purple-100/60 via-zinc-100/90 to-white',
   },
   {
     id: 'edm',
     name: { ko: '이디엠', en: 'EDM' },
     sub: 'EDM',
-    icon: '🎧',
     accentColor: '#00E5FF',
-    gradientDark: 'from-cyan-950/40 via-zinc-900/80 to-zinc-900/95',
-    gradientLight: 'from-cyan-100/60 via-zinc-100/90 to-white',
   },
   {
     id: 'pop',
     name: { ko: '팝', en: 'POP' },
     sub: 'POP',
-    icon: '🌎',
     accentColor: '#F59E0B',
-    gradientDark: 'from-amber-950/40 via-zinc-900/80 to-zinc-900/95',
-    gradientLight: 'from-amber-100/60 via-zinc-100/90 to-white',
   },
   {
     id: 'jpop',
     name: { ko: '제이팝', en: 'J-POP' },
     sub: 'J-POP',
-    icon: '⚡',
     accentColor: '#EC4899',
-    gradientDark: 'from-pink-950/40 via-zinc-900/80 to-zinc-900/95',
-    gradientLight: 'from-pink-100/60 via-zinc-100/90 to-white',
   },
 ];
 
@@ -165,15 +141,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col min-h-dvh justify-between p-6 pb-36 select-none relative overflow-x-hidden">
-      {/* Top Ambient Glow */}
-      <div
-        className="pointer-events-none absolute top-0 inset-x-0 h-72 opacity-20 dark:opacity-25 blur-3xl transition-colors duration-700"
-        style={{
-          background: 'radial-gradient(ellipse at 50% -20%, #C4FF00 0%, transparent 70%)',
-        }}
-      />
-
+    <div className="flex flex-col gap-5 px-5 pt-3 pb-24 select-none relative overflow-x-hidden">
       {/* Top Header */}
       <header className="z-10 pt-1">
         {/* Row 1: Back Button, Brand Pill, Spacer */}
@@ -213,7 +181,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
           <div
             className={`px-3.5 py-1.5 rounded-full text-xs font-black shadow-sm tracking-wide transition-all duration-300 ${
               count > 0
-                ? 'bg-[#C4FF00] text-black shadow-[#C4FF00]/20'
+                ? 'bg-[#C4FF00] text-black'
                 : 'bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400'
             }`}
           >
@@ -229,8 +197,8 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
       </header>
 
       {/* Main Apple Music Browse Category Tiles */}
-      <main className="flex-1 flex flex-col justify-center py-4 z-10">
-        <div className="grid grid-cols-2 gap-3 mb-4">
+      <main className="flex flex-col z-10">
+        <div className="grid grid-cols-2 gap-3 mb-3">
           {CATEGORIES.map((cat, idx) => {
             const isSelected = selectedCategories.includes(cat.id);
             const isShaking = shakingId === cat.id;
@@ -241,53 +209,44 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
                 key={cat.id}
                 animate={
                   isShaking
-                    ? { x: [-8, 8, -6, 6, -3, 3, 0] }
-                    : { scale: isSelected ? 1.02 : 1 }
+                    ? { x: [-6, 6, -4, 4, -2, 2, 0] }
+                    : { scale: 1 }
                 }
-                transition={{ type: 'spring', stiffness: 450, damping: 25 }}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.95 }}
+                transition={{ duration: 0.3 }}
                 onClick={() => handleCardClick(cat.id)}
-                className={`relative p-4 rounded-[24px] h-28 flex flex-col justify-between cursor-pointer select-none transition-all duration-200 overflow-hidden shadow-sm backdrop-blur-xl border ${
+                className={`relative h-20 p-4 rounded-[20px] flex items-center justify-between cursor-pointer select-none transition-all duration-150 shadow-sm border active:scale-[0.98] ${
                   isLastOdd ? 'col-span-2' : ''
                 } ${
                   isSelected
-                    ? 'border-[#C4FF00] shadow-lg shadow-[#C4FF00]/15 ring-2 ring-[#C4FF00]/40'
-                    : 'border-black/5 dark:border-white/10 hover:border-black/15 dark:hover:border-white/20'
-                } bg-gradient-to-br ${
-                  isDark ? cat.gradientDark : cat.gradientLight
+                    ? 'border-[#C4FF00] dark:border-[#C4FF00] ring-1 ring-[#C4FF00]/40 bg-zinc-100 dark:bg-zinc-900'
+                    : 'border-black/[0.08] dark:border-white/[0.08] bg-zinc-100/80 dark:bg-zinc-900/80 hover:border-black/20 dark:hover:border-white/20'
                 }`}
               >
-                {/* Background Ambient Accent Glow */}
-                {isSelected && (
+                {/* Left: Accent bar or Dot + Text info */}
+                <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full blur-2xl opacity-35 pointer-events-none"
+                    className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm"
                     style={{ backgroundColor: cat.accentColor }}
                   />
-                )}
-
-                {/* Top Row: Icon + Apple HIG Checkmark Badge */}
-                <div className="flex items-center justify-between z-10">
-                  <span className="text-3xl drop-shadow-sm">{cat.icon}</span>
-                  <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 ${
-                      isSelected
-                        ? 'bg-[#C4FF00] text-black shadow-md scale-110'
-                        : 'border-2 border-zinc-300 dark:border-zinc-700 bg-black/5 dark:bg-white/5'
-                    }`}
-                  >
-                    {isSelected && <Check className="w-3.5 h-3.5 stroke-[3.5]" />}
+                  <div className="min-w-0">
+                    <h3 className="text-[17px] font-black tracking-tight text-zinc-900 dark:text-white leading-tight font-display truncate">
+                      {cat.name[lang]}
+                    </h3>
+                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block mt-0.5">
+                      {cat.sub}
+                    </span>
                   </div>
                 </div>
 
-                {/* Bottom Row: Large Genre Name + Eyebrow Sub */}
-                <div className="z-10">
-                  <h3 className="text-lg font-black tracking-tight text-zinc-900 dark:text-white leading-tight font-display">
-                    {cat.name[lang]}
-                  </h3>
-                  <span className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
-                    {cat.sub}
-                  </span>
+                {/* Right: Clean Checkmark Circle */}
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center transition-all duration-150 shrink-0 ${
+                    isSelected
+                      ? 'bg-[#C4FF00] text-black shadow-sm'
+                      : 'border-2 border-zinc-300 dark:border-zinc-700 bg-transparent'
+                  }`}
+                >
+                  {isSelected && <Check className="w-3 h-3 stroke-[3.5]" />}
                 </div>
               </motion.div>
             );
@@ -298,11 +257,11 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
         <AnimatePresence>
           {count > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.96 }}
+              initial={{ opacity: 0, y: 8, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.96 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="p-3.5 rounded-2xl bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-between shadow-sm"
+              exit={{ opacity: 0, y: -4, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              className="p-3.5 rounded-[18px] bg-zinc-100/90 dark:bg-zinc-900/90 border border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between shadow-sm"
             >
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-[#C4FF00]" />
@@ -321,16 +280,14 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
       </main>
 
       {/* Bottom CTA Capsule Button */}
-      <footer className="pt-2 z-10">
-        <motion.button
+      <footer className="mt-2 z-10">
+        <button
           type="button"
           disabled={count === 0 || isGenerating}
           onClick={handleCreatePlaylist}
-          whileHover={count > 0 ? { scale: 1.02 } : {}}
-          whileTap={count > 0 ? { scale: 0.96 } : {}}
-          className={`w-full py-4 px-6 rounded-full font-black text-base transition-all flex items-center justify-center gap-2 ${
+          className={`w-full py-4 px-6 rounded-full font-black text-base transition-all flex items-center justify-center gap-2 shadow-sm ${
             count > 0
-              ? 'bg-[#C4FF00] hover:bg-[#B8F500] text-black shadow-lg shadow-[#C4FF00]/25 cursor-pointer'
+              ? 'bg-[#C4FF00] hover:bg-[#B8F500] text-black active:scale-[0.98] cursor-pointer'
               : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed'
           }`}
         >
@@ -346,7 +303,7 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
               <ArrowRight className="w-5 h-5 stroke-[2.5]" />
             </>
           )}
-        </motion.button>
+        </button>
       </footer>
     </div>
   );

@@ -20,8 +20,6 @@ import {
   Edit2,
   Check,
   Share2,
-  Sun,
-  Moon,
 } from 'lucide-react';
 import { Song, GenreTag, AppLanguage, SavedPlaylist, getSongTitle, getSongArtist } from '@/types/song';
 import { getPlaylistCoverUrl, getSongBpm, getBpmZoneLabel } from '@/lib/playlistGenerator';
@@ -99,10 +97,10 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
   onRefreshRecommendations,
   onBack,
   isDark,
-  onToggleTheme,
+  onToggleTheme: _onToggleTheme,
   showToast,
   lang,
-  onToggleLang,
+  onToggleLang: _onToggleLang,
   initialPlaylistName,
   onSavedToFeed,
   preferredArtists = [],
@@ -150,13 +148,13 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
     return `${mins}분`;
   }, [totalDurationSec, lang]);
 
-  // Handle Reshuffle with rotation animation + canvas-confetti burst
+  // Handle Reshuffle with rotation animation + subtle canvas-confetti burst
   const handleReshuffleClick = () => {
     setIsShuffling(true);
     try {
       confetti({
-        particleCount: 35,
-        spread: 60,
+        particleCount: 25,
+        spread: 50,
         origin: { y: 0.35 },
         colors: ['#C4FF00', '#3B82F6', '#FF4B4B', '#FFFFFF'],
         disableForReducedMotion: true,
@@ -166,7 +164,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
     }
 
     onReshuffle();
-    setTimeout(() => setIsShuffling(false), 700);
+    setTimeout(() => setIsShuffling(false), 600);
   };
 
   // Save to Community Feed via POST /api/playlists
@@ -200,8 +198,8 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
       // Trigger Confetti & Sound Fanfare
       try {
         confetti({
-          particleCount: 50,
-          spread: 70,
+          particleCount: 40,
+          spread: 60,
           origin: { y: 0.4 },
           colors: ['#C4FF00', '#3B82F6', '#FF4B4B', '#FFFFFF'],
         });
@@ -245,22 +243,22 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
   }, [selectedCategories, lang]);
 
   return (
-    <div className="flex flex-col min-h-dvh pb-40">
-      {/* 1. Top Floating Glass Navigation Bar (Screenshot 4 top corners) */}
+    <div className="flex flex-col min-h-dvh pb-24">
+      {/* 1. Clean, Symmetrical Top Navigation Bar (Apple Music iOS 26 detail header) */}
       <header className="sticky top-0 z-30 flex items-center justify-between px-5 pt-3 pb-2 bg-white/75 dark:bg-black/75 backdrop-blur-2xl border-b border-black/5 dark:border-white/5">
-        {/* Left: Circular liquid-glass Back button */}
+        {/* Left: Circular glass Back button */}
         <button
           type="button"
           onClick={onBack}
           aria-label={lang === 'ko' ? '뒤로 가기' : 'Back'}
-          className="w-10 h-10 rounded-full bg-zinc-200/80 dark:bg-zinc-800/85 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm cursor-pointer active:scale-95 transition-all"
+          className="w-9 h-9 rounded-full bg-zinc-200/80 dark:bg-zinc-800/85 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center text-zinc-900 dark:text-white shadow-xs cursor-pointer active:scale-95 transition-all"
         >
           <ChevronLeft className="w-5 h-5 -ml-0.5" />
         </button>
 
-        {/* Center: Subtle PULSE branding */}
+        {/* Center: Subtle PULSE brand / Cadence label */}
         <div className="flex items-center gap-1.5 opacity-80">
-          <div className="relative w-5 h-5 rounded-md overflow-hidden">
+          <div className="relative w-4 h-4 rounded-md overflow-hidden">
             <Image
               src={isDark ? '/logos/logo-dark.png' : '/logos/logo-green.png'}
               alt="PULSE"
@@ -268,81 +266,30 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               className="object-cover"
             />
           </div>
-          <span className="font-black tracking-widest text-xs uppercase font-display text-zinc-900 dark:text-white">
+          <span className="font-black tracking-widest text-[11px] uppercase font-display text-zinc-900 dark:text-white">
             PULSE
           </span>
         </div>
 
-        {/* Right: Quick actions (Theme + Lang + Share/Export) */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            aria-label={isDark ? '라이트 모드로 전환' : '다크 모드로 전환'}
-            className="w-10 h-10 rounded-full bg-zinc-200/80 dark:bg-zinc-800/85 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm cursor-pointer active:scale-95 transition-all"
-          >
-            {isDark ? (
-              <Sun className="w-4 h-4 text-zinc-200 hover:text-[#C4FF00] transition-colors" />
-            ) : (
-              <Moon className="w-4 h-4 text-zinc-700 hover:text-zinc-900 transition-colors" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={onToggleLang}
-            aria-label={lang === 'ko' ? 'Switch to English' : '한국어로 전환'}
-            className="w-10 h-10 rounded-full bg-zinc-200/80 dark:bg-zinc-800/85 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center text-[11px] font-black text-zinc-900 dark:text-white shadow-sm cursor-pointer active:scale-95 transition-all"
-          >
-            {lang === 'ko' ? 'EN' : '한'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsExportModalOpen(true)}
-            aria-label={lang === 'ko' ? '플레이리스트 공유 및 내보내기' : 'Export and share mix'}
-            className="w-10 h-10 rounded-full bg-zinc-200/80 dark:bg-zinc-800/85 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm cursor-pointer active:scale-95 transition-all"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Right: Symmetrical Circular glass Share/Export button */}
+        <button
+          type="button"
+          onClick={() => setIsExportModalOpen(true)}
+          aria-label={lang === 'ko' ? '플레이리스트 공유 및 내보내기' : 'Export and share mix'}
+          className="w-9 h-9 rounded-full bg-zinc-200/80 dark:bg-zinc-800/85 backdrop-blur-xl border border-black/5 dark:border-white/10 flex items-center justify-center text-zinc-900 dark:text-white shadow-xs cursor-pointer active:scale-95 transition-all"
+        >
+          <Share2 className="w-4 h-4" />
+        </button>
       </header>
 
       {/* Main Content */}
       <main className="px-5 pt-3">
-        {/* 2. Centered Hero Artwork + Floating Calendar-Style BPM Badge */}
-        <div className="relative w-44 h-44 mx-auto mt-2">
-          {/* Subtle ambient glow behind the hero based on BPM zone color */}
+        {/* 2. Hero Artwork + Proportional Calendar-Style BPM Badge (No neon halos or infinite bouncing) */}
+        <div className="relative w-40 h-40 mx-auto mt-2">
+          {/* Clean, static Apple HIG circular cover */}
           <div
-            className="absolute -inset-4 rounded-full blur-2xl opacity-45 dark:opacity-40 pointer-events-none transition-all duration-700"
-            style={{ backgroundColor: zoneColor }}
-          />
-
-          {/* Centered Circular Artwork */}
-          <motion.div
-            animate={
-              isPlayingAudio
-                ? {
-                    scale: [1, 1.025, 1],
-                    boxShadow: [
-                      `0 0 0 0 ${zoneColor}00`,
-                      `0 0 32px 8px ${zoneColor}66`,
-                      `0 0 0 0 ${zoneColor}00`,
-                    ],
-                  }
-                : { scale: 1, boxShadow: '0 20px 40px -15px rgba(0,0,0,0.45)' }
-            }
-            transition={
-              isPlayingAudio
-                ? {
-                    repeat: Infinity,
-                    duration: Math.max(0.35, 60 / targetBpm),
-                    ease: 'easeInOut',
-                  }
-                : { duration: 0.3 }
-            }
             onClick={onToggleContinuousPlay}
-            className="w-44 h-44 rounded-full overflow-hidden shadow-2xl border-2 border-black/10 dark:border-white/15 relative group cursor-pointer bg-black"
+            className="w-40 h-40 rounded-full overflow-hidden shadow-xl border border-black/10 dark:border-white/15 relative group cursor-pointer bg-zinc-900"
             title={lang === 'ko' ? '클릭하여 연속 재생' : 'Click to toggle continuous play'}
           >
             <Image
@@ -353,28 +300,28 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               className="object-cover transition-transform duration-300 group-hover:scale-105"
             />
 
-            {/* Live pulsing audio indicator badge overlay */}
+            {/* Clean audio playing overlay (static, no animate-ping) */}
             {isPlayingAudio && (
-              <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
-                <div className="px-3 py-1 rounded-full bg-black/80 backdrop-blur-md border border-[#C4FF00]/70 flex items-center gap-1.5 shadow-xl">
-                  <span className="w-2 h-2 rounded-full bg-[#C4FF00] animate-ping" />
-                  <span className="text-[10px] font-black tracking-wider text-[#C4FF00]">
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                <div className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 flex items-center gap-1.5 shadow-md">
+                  <span className="w-2 h-2 rounded-full bg-[#C4FF00]" />
+                  <span className="text-[10px] font-bold tracking-wider text-white">
                     PLAYING
                   </span>
                 </div>
               </div>
             )}
-          </motion.div>
+          </div>
 
-          {/* Floating Calendar-Style Badge in bottom-right corner (Screenshot 4 Sep / 30 replica) */}
-          <div className="absolute -bottom-1 -right-1 w-16 h-16 rounded-[18px] bg-zinc-950/95 dark:bg-black/95 border border-white/15 shadow-xl flex flex-col items-center justify-center leading-none z-10 pointer-events-none">
+          {/* Proportional Calendar-Style Badge in bottom-right corner (Screenshot 4 Sep / 30 replica) */}
+          <div className="absolute -bottom-1 -right-1 w-14 h-14 rounded-[16px] bg-zinc-900 dark:bg-zinc-950 border border-white/15 shadow-lg flex flex-col items-center justify-center leading-none z-10 pointer-events-none">
             <span
-              className="text-[10px] font-black uppercase tracking-wider"
+              className="text-[9px] font-bold uppercase tracking-wider"
               style={{ color: zoneColor }}
             >
               BPM
             </span>
-            <span className="text-[24px] font-black text-white tracking-tight mt-0.5 font-display">
+            <span className="text-[20px] font-black text-white tracking-tight mt-0.5 font-display">
               {targetBpm}
             </span>
           </div>
@@ -398,7 +345,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               <button
                 type="button"
                 onClick={() => setIsEditingTitle(false)}
-                className="p-1.5 rounded-xl bg-[#C4FF00] text-black shrink-0 cursor-pointer shadow-md"
+                className="p-1.5 rounded-xl bg-[#C4FF00] text-black shrink-0 cursor-pointer shadow-xs"
               >
                 <Check className="w-4 h-4 stroke-[3]" />
               </button>
@@ -409,35 +356,33 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               className="group inline-flex items-center justify-center gap-2 cursor-pointer hover:opacity-85 transition-opacity max-w-full"
               title={lang === 'ko' ? '클릭하여 이름 수정' : 'Click to edit title'}
             >
-              <h1 className="text-[26px] font-black tracking-tight text-zinc-900 dark:text-white leading-tight truncate">
+              <h1 className="text-[24px] font-black tracking-tight text-zinc-900 dark:text-white leading-tight truncate">
                 {playlistTitle}
               </h1>
-              <Edit2 className="w-4 h-4 text-zinc-400 group-hover:text-[#C4FF00] shrink-0 transition-colors" />
+              <Edit2 className="w-4 h-4 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-[#C4FF00] shrink-0 transition-colors" />
             </div>
           )}
         </div>
 
-        {/* 3. Two Side-by-Side Capsule Action Buttons (Screenshot 4 [ Get Tickets ] & [ ▶ Set List ]) */}
+        {/* 3. De-Gimmicked Capsule Action Buttons (Clean Apple HIG Styling) */}
         <div className="grid grid-cols-2 gap-3 mt-5">
           {/* Left Capsule Button — Export Mix */}
-          <motion.button
-            whileTap={{ scale: 0.95 }}
+          <button
             type="button"
             onClick={() => setIsExportModalOpen(true)}
-            className="py-3.5 px-4 rounded-full bg-zinc-200/90 dark:bg-zinc-800/90 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white font-bold text-[13px] flex items-center justify-center gap-2 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-sm cursor-pointer transition-all active:scale-95"
+            className="py-3 px-4 rounded-full bg-zinc-200/80 dark:bg-zinc-800/80 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white font-bold text-[13px] flex items-center justify-center gap-2 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-xs cursor-pointer transition-all active:scale-98"
           >
-            <Rocket className="w-4 h-4 text-zinc-800 dark:text-[#C4FF00] shrink-0" />
+            <Rocket className="w-4 h-4 text-zinc-700 dark:text-[#C4FF00] shrink-0" />
             <span className="truncate">{lang === 'ko' ? '플리 내보내기' : 'Export Mix'}</span>
-          </motion.button>
+          </button>
 
           {/* Right Capsule Button — Play Set List (Continuous Play) */}
-          <motion.button
-            whileTap={{ scale: 0.95 }}
+          <button
             type="button"
             onClick={onToggleContinuousPlay}
-            className={`py-3.5 px-4 rounded-full font-black text-[13px] flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all active:scale-95 ${
+            className={`py-3 px-4 rounded-full font-bold text-[13px] flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-all active:scale-98 ${
               isPlayingAudio
-                ? 'bg-zinc-950 text-[#C4FF00] border-2 border-[#C4FF00] shadow-[#C4FF00]/25 shadow-lg ring-1 ring-[#C4FF00]/50'
+                ? 'bg-zinc-900 text-[#C4FF00] dark:bg-zinc-800 dark:text-[#C4FF00] border border-[#C4FF00]/40'
                 : 'bg-[#C4FF00] hover:bg-[#B5F000] text-black'
             }`}
           >
@@ -445,11 +390,6 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               <>
                 <Pause className="w-4 h-4 fill-current shrink-0" />
                 <span className="truncate">{lang === 'ko' ? '일시 정지' : 'Pause Mix'}</span>
-                <div className="flex items-end gap-[2px] h-3 ml-0.5 shrink-0">
-                  <span className="w-0.5 bg-[#C4FF00] h-full animate-bounce" />
-                  <span className="w-0.5 bg-[#C4FF00] h-2/3 animate-bounce [animation-delay:0.15s]" />
-                  <span className="w-0.5 bg-[#C4FF00] h-4/5 animate-bounce [animation-delay:0.3s]" />
-                </div>
               </>
             ) : (
               <>
@@ -457,11 +397,11 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                 <span className="truncate">{lang === 'ko' ? '연속 재생' : 'Play Mix'}</span>
               </>
             )}
-          </motion.button>
+          </button>
         </div>
 
-        {/* 4. Apple HIG Inset Grouped Metadata Card (Screenshot 4 30 September / Sofi Stadium card) */}
-        <div className="mt-5 rounded-[24px] bg-zinc-100/90 dark:bg-zinc-900/85 backdrop-blur-xl border border-black/5 dark:border-white/10 p-4 divide-y divide-zinc-200/80 dark:divide-zinc-800/80 shadow-sm">
+        {/* 4. Apple HIG Inset Grouped Metadata Card (Screenshot 4 Sofi Stadium card) */}
+        <div className="mt-5 rounded-[24px] bg-zinc-100/90 dark:bg-zinc-900/85 backdrop-blur-xl border border-black/5 dark:border-white/10 p-4 divide-y divide-zinc-200/80 dark:divide-zinc-800/80 shadow-xs">
           {/* Row 1 (Cadence & Duration + Save to Feed Circular Button) */}
           <div className="pb-3.5 flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -511,10 +451,10 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               <div className="text-[12px] font-medium text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
                 {preferredArtists.length > 0
                   ? lang === 'ko'
-                    ? `최애 아티스트 ${preferredArtists.length}팀 취향 반영됨`
-                    : `${preferredArtists.length} favorite artists active`
+                    ? `최애 아티스트 ${preferredArtists.length}팀 반영`
+                    : `${preferredArtists.length} favorite artists`
                   : lang === 'ko'
-                  ? '아티스트 취향 버블 설정하기'
+                  ? '아티스트 취향 설정'
                   : 'Customize favorite artists'}
               </div>
             </div>
@@ -540,7 +480,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               >
                 <motion.div
                   animate={isShuffling ? { rotate: 360 } : { rotate: 0 }}
-                  transition={{ duration: 0.6, ease: 'easeInOut' }}
+                  transition={{ duration: 0.5, ease: 'easeInOut' }}
                 >
                   <RotateCw className="w-4 h-4" />
                 </motion.div>
@@ -557,7 +497,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
         {/* 5. Cadence Set List Section & Apple HIG Hairline Tracklist */}
         <section className="mt-7">
           <div className="flex items-center justify-between mb-3 px-1">
-            <h2 className="text-[19px] font-black tracking-tight text-zinc-900 dark:text-white">
+            <h2 className="text-[18px] font-black tracking-tight text-zinc-900 dark:text-white">
               {lang === 'ko' ? '케이던스 셋리스트' : 'Cadence Set List'}
             </h2>
             <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-zinc-200/80 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300">
@@ -575,13 +515,13 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               <button
                 type="button"
                 onClick={onBack}
-                className="px-4 py-2 rounded-full bg-[#C4FF00] text-black text-xs font-black shadow-md cursor-pointer active:scale-95 transition-transform"
+                className="px-4 py-2 rounded-full bg-[#C4FF00] text-black text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-transform"
               >
                 {lang === 'ko' ? '다른 장르나 BPM 선택하기' : 'Pick another genre or BPM'}
               </button>
             </div>
           ) : (
-            <div className="rounded-[24px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-sm overflow-hidden divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
+            <div className="rounded-[24px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-xs overflow-hidden divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
               <AnimatePresence mode="popLayout">
                 {playlist.map((song, index) => {
                   const songKey = song.normalized_key || song.title + song.artist;
@@ -599,10 +539,10 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                     <motion.div
                       key={songKey}
                       layout
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -50, scale: 0.95 }}
-                      transition={{ type: 'spring', damping: 26, stiffness: 360 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
                       className={`flex flex-col transition-colors duration-150 ${
                         isPlayingThis
                           ? 'bg-[#C4FF00]/10 dark:bg-[#C4FF00]/15'
@@ -622,7 +562,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                             type="button"
                             onClick={() => onPlaySong(song)}
                             aria-label={`${displayTitle} 미리듣기 재생`}
-                            className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 group cursor-pointer shadow-sm"
+                            className="relative w-11 h-11 rounded-xl overflow-hidden shrink-0 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 group cursor-pointer shadow-xs"
                           >
                             {song.cover_url ? (
                               <Image
@@ -653,7 +593,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                             </div>
                           </button>
 
-                          {/* Song Title, Artist & Animated 3-Bar Equalizer */}
+                          {/* Song Title, Artist & Equalizer */}
                           <div className="min-w-0 flex-1 pr-1">
                             <div className="flex items-center gap-1.5">
                               <span
@@ -703,20 +643,21 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                             </div>
 
                             <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                              {/* Clean Apple Music Typographic Tags (Zero Emojis) */}
                               {artistTier === 'selected' && (
-                                <span className="px-1.5 py-0.2 rounded bg-[#C4FF00] text-black text-[9px] font-black shrink-0">
-                                  {lang === 'ko' ? '★ 최애' : '★ Pick'}
+                                <span className="px-1.5 py-0.5 rounded bg-[#C4FF00]/20 text-lime-800 dark:text-[#C4FF00] text-[9px] font-bold shrink-0">
+                                  {lang === 'ko' ? '최애' : 'PICK'}
                                 </span>
                               )}
                               {artistTier === 'related' && (
-                                <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30 text-[9px] font-black shrink-0">
-                                  {lang === 'ko' ? '🔗 연관' : '🔗 Vibe'}
+                                <span className="px-1.5 py-0.5 rounded bg-zinc-200/80 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[9px] font-bold shrink-0">
+                                  {lang === 'ko' ? '연관' : 'VIBE'}
                                 </span>
                               )}
                               {((song.popularity_score ?? 0) >= 88 ||
                                 (song.artist_track_rank ?? 99) <= 5) && (
-                                <span className="px-1.5 py-0.2 rounded bg-rose-500/15 text-rose-500 dark:text-rose-400 border border-rose-500/30 text-[9px] font-black shrink-0">
-                                  {lang === 'ko' ? '🔥 인기' : '🔥 HOT'}
+                                <span className="px-1.5 py-0.5 rounded bg-zinc-200/80 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[9px] font-bold shrink-0">
+                                  {lang === 'ko' ? '인기' : 'HOT'}
                                 </span>
                               )}
                               <span className="truncate">{displayArtist}</span>
@@ -732,9 +673,9 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                         <div className="flex items-center gap-1.5 shrink-0 pl-1">
                           {/* Song BPM Badge */}
                           <span
-                            className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                               isExactOrClose
-                                ? 'bg-[#C4FF00] text-black border-[#C4FF00] shadow-sm'
+                                ? 'bg-[#C4FF00] text-black border-[#C4FF00] shadow-xs'
                                 : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
                             }`}
                           >
@@ -775,7 +716,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
+                            transition={{ duration: 0.15 }}
                             className="bg-zinc-50 dark:bg-zinc-950/80 border-t border-zinc-200/70 dark:border-zinc-800/70 px-3.5 py-2 flex items-center justify-between gap-1 overflow-x-auto text-[10px] font-bold"
                           >
                             <span className="text-[10px] text-zinc-500 dark:text-zinc-400 shrink-0 mr-1">
@@ -842,19 +783,19 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
           )}
         </section>
 
-        {/* 6. Recommended Tracks & Add to Playlist Section (Apple HIG Hairline Styling) */}
+        {/* 6. Recommended Tracks & Add to Playlist Section (Apple HIG Hairline Styling, Zero Emojis) */}
         <section className="mt-8">
           <div className="flex items-center justify-between mb-3 px-1">
             <div>
               <div className="flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-lime-600 dark:text-[#C4FF00]" />
+                <Sparkles className="w-4 h-4 text-zinc-700 dark:text-[#C4FF00]" />
                 <h3 className="text-[16px] font-black tracking-tight text-zinc-900 dark:text-white">
                   {lang === 'ko' ? '곡 추가 / 추천곡' : 'Recommended Tracks'}
                 </h3>
               </div>
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                 {lang === 'ko'
-                  ? '선택한 장르의 BPM 맞춤 추천곡을 내 플레이리스트에 담아보세요'
+                  ? '선택한 장르의 BPM 맞춤 추천곡'
                   : 'Add cadence-matched tracks from your selected genres'}
               </p>
             </div>
@@ -878,7 +819,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
               </p>
             </div>
           ) : (
-            <div className="rounded-[24px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-sm overflow-hidden divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
+            <div className="rounded-[24px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-xs overflow-hidden divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
               <AnimatePresence mode="popLayout">
                 {recommendedSongs.map((song, index) => {
                   const songKey = song.normalized_key || song.title + song.artist;
@@ -888,15 +829,16 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                   const isExactOrClose = Math.abs(songBpm - targetBpm) <= 2;
                   const recTitle = getSongTitle(song, lang);
                   const recArtist = getSongArtist(song, lang);
+                  const artistTier = getSongArtistMatchTier(song, preferredArtists);
 
                   return (
                     <motion.div
                       key={`rec-${songKey}-${index}`}
                       layout
-                      initial={{ opacity: 0, scale: 0.96 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
                       className="flex items-center justify-between p-3 gap-2 hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors"
                     >
                       {/* Thumbnail & Title */}
@@ -905,7 +847,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                           type="button"
                           onClick={() => onPlaySong(song)}
                           aria-label={`${recTitle} 미리듣기 재생`}
-                          className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 group cursor-pointer shadow-sm"
+                          className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 group cursor-pointer shadow-xs"
                         >
                           {song.cover_url ? (
                             <Image
@@ -941,20 +883,21 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                             {recTitle}
                           </div>
                           <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-                            {getSongArtistMatchTier(song, preferredArtists) === 'selected' && (
-                              <span className="px-1.5 py-0.2 rounded bg-[#C4FF00] text-black text-[9px] font-black shrink-0">
-                                {lang === 'ko' ? '★ 최애' : '★ Pick'}
+                            {/* Typographic Tags (Zero Emojis) */}
+                            {artistTier === 'selected' && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#C4FF00]/20 text-lime-800 dark:text-[#C4FF00] text-[9px] font-bold shrink-0">
+                                {lang === 'ko' ? '최애' : 'PICK'}
                               </span>
                             )}
-                            {getSongArtistMatchTier(song, preferredArtists) === 'related' && (
-                              <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30 text-[9px] font-black shrink-0">
-                                {lang === 'ko' ? '🔗 연관' : '🔗 Vibe'}
+                            {artistTier === 'related' && (
+                              <span className="px-1.5 py-0.5 rounded bg-zinc-200/80 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[9px] font-bold shrink-0">
+                                {lang === 'ko' ? '연관' : 'VIBE'}
                               </span>
                             )}
                             {((song.popularity_score ?? 0) >= 88 ||
                               (song.artist_track_rank ?? 99) <= 5) && (
-                              <span className="px-1.5 py-0.2 rounded bg-rose-500/15 text-rose-500 dark:text-rose-400 border border-rose-500/30 text-[9px] font-black shrink-0">
-                                {lang === 'ko' ? '🔥 인기' : '🔥 HOT'}
+                              <span className="px-1.5 py-0.5 rounded bg-zinc-200/80 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[9px] font-bold shrink-0">
+                                {lang === 'ko' ? '인기' : 'HOT'}
                               </span>
                             )}
                             <span className="truncate">{recArtist}</span>
@@ -969,7 +912,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                       {/* Right side: BPM badge & Add (+) button */}
                       <div className="flex items-center gap-2 shrink-0">
                         <span
-                          className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                             isExactOrClose
                               ? 'bg-[#C4FF00] text-black border-[#C4FF00]'
                               : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
@@ -983,7 +926,7 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
                           type="button"
                           onClick={() => onAddSong(song)}
                           aria-label={`${recTitle} 플레이리스트에 추가`}
-                          className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-[#C4FF00] hover:text-black dark:bg-zinc-800 dark:hover:bg-[#C4FF00] dark:hover:text-black text-zinc-700 dark:text-zinc-300 flex items-center justify-center transition-all shadow-sm cursor-pointer"
+                          className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-[#C4FF00] hover:text-black dark:bg-zinc-800 dark:hover:bg-[#C4FF00] dark:hover:text-black text-zinc-700 dark:text-zinc-300 flex items-center justify-center transition-all shadow-xs cursor-pointer"
                         >
                           <Plus className="w-4 h-4" />
                         </motion.button>
