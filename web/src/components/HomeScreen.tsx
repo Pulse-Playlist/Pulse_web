@@ -260,35 +260,35 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       </header>
 
       {/* ========================================================
-          Section 1: Top Picks for You (Apple Music Tall 3:4.1 Vertical Cards Carousel)
+          Section 1: Top Picks for You (Fixed 2-Column Side-by-Side Grid, No Horizontal Scroll)
           ======================================================== */}
       <section className="space-y-3">
         <h2 className="text-[21px] font-black tracking-tight text-zinc-900 dark:text-white">
           {lang === 'ko' ? '맞춤 추천' : 'Top Picks for You'}
         </h2>
 
-        <div className="flex overflow-x-auto snap-x snap-mandatory gap-3.5 scrollbar-none -mx-5 px-5 pb-2">
+        <div className="grid grid-cols-2 gap-3">
           {/* Card 1 — Primary "Create Cadence Mix" Card */}
           <div
             onClick={() => {
               playTapKick(1);
               onStart();
             }}
-            className="w-[220px] rounded-[22px] p-3.5 flex flex-col justify-between bg-[#161618] dark:bg-[#141416] text-white shadow-md border border-black/5 dark:border-white/10 shrink-0 snap-start cursor-pointer group relative overflow-hidden"
+            className="w-full rounded-[20px] p-3 flex flex-col justify-between bg-[#161618] dark:bg-[#141416] text-white shadow-md border border-black/5 dark:border-white/10 cursor-pointer group relative overflow-hidden active:scale-[0.98] transition-transform"
           >
             {/* Top inner square artwork box */}
             <div className="w-full aspect-square rounded-[14px] bg-zinc-900 border border-white/[0.07] flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
-              <Star className="w-14 h-14 text-[#C4FF00] fill-[#C4FF00] group-hover:scale-[1.02] transition-transform duration-200" />
+              <Star className="w-12 h-12 text-[#C4FF00] fill-[#C4FF00] group-hover:scale-[1.03] transition-transform duration-200" />
 
               <div className="absolute bottom-2 left-2">
-                <span className="bg-white/10 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-white/10">
+                <span className="bg-white/10 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/10">
                   160 BPM
                 </span>
               </div>
 
               {/* + Create overlay on hover */}
               <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10">
-                <span className="px-3 py-1 rounded-full bg-[#C4FF00] text-black font-black text-xs shadow-md flex items-center gap-1.5 scale-95 group-hover:scale-100 transition-transform">
+                <span className="px-3 py-1 rounded-full bg-[#C4FF00] text-black font-black text-xs shadow-md flex items-center gap-1 scale-95 group-hover:scale-100 transition-transform">
                   <Plus className="w-3.5 h-3.5 stroke-[3]" />
                   {lang === 'ko' ? '만들기' : 'Create'}
                 </span>
@@ -296,124 +296,69 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
 
             {/* Bottom editorial caption inside the dark card */}
-            <div className="pt-2">
-              <p className="text-[11px] font-semibold text-zinc-400">
+            <div className="pt-2.5">
+              <p className="text-[10px] font-semibold text-zinc-400">
                 {lang === 'ko' ? '맞춤 러닝 케이던스' : 'Made for Your Pace'}
               </p>
-              <div className="text-[15px] font-black text-white leading-snug mt-0.5 flex items-center justify-between">
-                <span>{lang === 'ko' ? '러닝 플레이리스트 만들기' : 'Create Cadence Mix'}</span>
-                <ArrowRight className="w-3.5 h-3.5 text-[#C4FF00] group-hover:translate-x-1 transition-transform" />
+              <div className="text-[14px] font-black text-white leading-snug mt-0.5 flex items-center justify-between gap-1">
+                <span className="truncate">{lang === 'ko' ? '러닝 플리 만들기' : 'Create Cadence Mix'}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#C4FF00] shrink-0 group-hover:translate-x-0.5 transition-transform" />
               </div>
-              <p className="text-[11px] text-zinc-400 line-clamp-2 mt-0.5 leading-relaxed">
+              <p className="text-[11px] text-zinc-400 line-clamp-2 mt-0.5 leading-snug">
                 {lang === 'ko'
-                  ? `${totalSongsCount.toLocaleString()}곡 중 내 보폭 BPM에 딱 맞는 30곡 생성`
-                  : `Sync 30 tracks from ${totalSongsCount.toLocaleString()} songs to your stride.`}
+                  ? `${totalSongsCount.toLocaleString()}곡 중 내 보폭에 맞는 30곡 생성`
+                  : `Sync 30 tracks from ${totalSongsCount.toLocaleString()} songs.`}
               </p>
             </div>
           </div>
 
-          {/* Card 2 — "Artist Taste Bubbles" Minimal Geometric Card */}
+          {/* Card 2 — "Artist Taste Selection" Fixed Side-by-Side Card */}
           <div
             onClick={() => {
               playPopSound(true);
               onOpenArtistSelect?.();
             }}
-            className="w-[220px] rounded-[22px] p-3.5 flex flex-col justify-between bg-[#161618] dark:bg-[#141416] text-white shadow-md border border-black/5 dark:border-white/10 shrink-0 snap-start cursor-pointer group relative overflow-hidden"
+            className="w-full rounded-[20px] p-3 flex flex-col justify-between bg-[#161618] dark:bg-[#141416] text-white shadow-md border border-black/5 dark:border-white/10 cursor-pointer group relative overflow-hidden active:scale-[0.98] transition-transform"
           >
             {/* Inner square graphic box */}
             <div className="w-full aspect-square rounded-[14px] bg-gradient-to-br from-zinc-800 to-zinc-950 border border-white/[0.07] flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
               {/* Minimal concentric rings / geometric accent */}
-              <div className="absolute w-28 h-28 rounded-full border border-white/5 pointer-events-none" />
-              <div className="absolute w-20 h-20 rounded-full border border-white/10 pointer-events-none" />
+              <div className="absolute w-24 h-24 rounded-full border border-white/5 pointer-events-none" />
+              <div className="absolute w-16 h-16 rounded-full border border-white/10 pointer-events-none" />
 
               <div className="relative z-10 flex flex-col items-center gap-1.5">
-                <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-[1.02] transition-transform duration-200">
-                  <Sparkles className="w-6 h-6 text-[#C4FF00]" />
+                <div className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-[1.03] transition-transform duration-200">
+                  <Sparkles className="w-5 h-5 text-[#C4FF00]" />
                 </div>
               </div>
 
               <div className="absolute bottom-2 left-2">
-                <span className="bg-white/10 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-white/10">
+                <span className="bg-white/10 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/10">
                   {preferredArtistsCount > 0 ? `${preferredArtistsCount} ARTISTS` : 'TASTE PROFILE'}
                 </span>
               </div>
             </div>
 
             {/* Bottom text */}
-            <div className="pt-2">
-              <p className="text-[11px] font-semibold text-[#C4FF00]">
+            <div className="pt-2.5">
+              <p className="text-[10px] font-semibold text-[#C4FF00]">
                 {lang === 'ko' ? '취향 아티스트' : 'Taste Profile'}
               </p>
-              <h3 className="text-[15px] font-black text-white mt-0.5 leading-snug">
-                {lang === 'ko' ? '최애 아티스트 버블' : 'Artist Taste Bubbles'}
-              </h3>
-              <p className="text-[11px] text-zinc-400 line-clamp-2 mt-0.5 leading-relaxed">
+              <div className="text-[14px] font-black text-white leading-snug mt-0.5 flex items-center justify-between gap-1">
+                <span className="truncate">{lang === 'ko' ? '최애 아티스트 고르기' : 'Pick Favorite Artists'}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#C4FF00] shrink-0 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+              <p className="text-[11px] text-zinc-400 line-clamp-2 mt-0.5 leading-snug">
                 {preferredArtistsCount > 0
                   ? lang === 'ko'
                     ? `${preferredArtistsCount}팀의 최애 아티스트 취향 반영 중`
                     : `${preferredArtistsCount} favorite artists active`
                   : lang === 'ko'
-                  ? '좋아하는 아티스트를 골라 플레이리스트에 반영'
-                  : 'Pick artists to personalize your cadence mix'}
+                  ? '좋아하는 아티스트를 골라 플리에 반영'
+                  : 'Pick artists to personalize your mix'}
               </p>
             </div>
           </div>
-
-          {/* Card 3+ — Featured Community Mixes */}
-          {communityPlaylists.slice(0, 2).map((pl) => {
-            const cover = getPlaylistCoverUrl(pl.bpm);
-            const zoneStyle = getBpmZoneStyle(pl.bpm);
-
-            return (
-              <div
-                key={pl.id}
-                onClick={() => {
-                  playPopSound();
-                  onSelectPlaylist(pl);
-                }}
-                className="w-[220px] rounded-[22px] p-3.5 flex flex-col justify-between bg-[#161618] dark:bg-[#141416] text-white shadow-md border border-black/5 dark:border-white/10 shrink-0 snap-start cursor-pointer group relative overflow-hidden"
-              >
-                {/* Top inner artwork box */}
-                <div className="w-full aspect-square rounded-[14px] bg-zinc-900 overflow-hidden relative shadow-inner border border-white/[0.07]">
-                  <Image
-                    src={cover}
-                    alt={pl.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute top-2 left-2">
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${zoneStyle.badgeBg} shadow-xs`}
-                    >
-                      {pl.bpm} BPM
-                    </span>
-                  </div>
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
-                      <Play className="w-4 h-4 fill-black ml-0.5" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom editorial caption */}
-                <div className="pt-2">
-                  <p className="text-[11px] font-semibold text-zinc-400 truncate">
-                    {pl.bpm} BPM Cadence · {pl.author}
-                  </p>
-                  <h3 className="text-[15px] font-black text-white leading-snug mt-0.5 truncate group-hover:text-[#C4FF00] transition-colors">
-                    {pl.name}
-                  </h3>
-                  <p className="text-[11px] text-zinc-400 line-clamp-2 mt-0.5 leading-relaxed">
-                    {pl.songs && pl.songs.length > 0
-                      ? pl.songs.slice(0, 3).map((s) => getSongTitle(s, lang)).join(' · ')
-                      : lang === 'ko'
-                      ? '인기 러닝 케이던스 믹스'
-                      : 'Trending running cadence mix'}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
         </div>
       </section>
 
