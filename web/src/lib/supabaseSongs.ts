@@ -110,10 +110,114 @@ export function normalizeSupabaseSongRow(
 let clientSongsCache: Song[] | null = null;
 let clientFetchPromise: Promise<Song[]> | null = null;
 
+const IDB_NAME = 'pulse_songs_cache_db';
+const IDB_STORE = 'songs_store';
+const IDB_KEY = 'all_songs_v1';
+const IDB_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours cache TTL
+const SESSION_TOP_SONGS_KEY = 'pulse_top_songs_v1';
+
+interface CachedSongsEntry {
+  timestamp: number;
+  songs: Song[];
+}
+
+function readSongsFromIndexedDB(): Promise<CachedSongsEntry | null> {
+  if (typeof window === 'undefined' || !('indexedDB' in window)) {
+    return Promise.resolve(null);
+  }
+  return new Promise((resolve) => {
+    try {
+      const openReq = window.indexedDB.open(IDB_NAME, 1);
+      openReq.onupgradeneeded = () => {
+        const db = openReq.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE);
+        }
+      };
+      openReq.onsuccess = () => {
+        try {
+          const db = openReq.result;
+          const tx = db.transaction(IDB_STORE, 'readonly');
+          const store = tx.objectStore(IDB_STORE);
+          const getReq = store.get(IDB_KEY);
+          getReq.onsuccess = () => {
+            resolve((getReq.result as CachedSongsEntry) || null);
+          };
+          getReq.onerror = () => resolve(null);
+        } catch {
+          resolve(null);
+        }
+      };
+      openReq.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+function writeSongsToIndexedDB(songs: Song[]): void {
+  if (typeof window === 'undefined' || !('indexedDB' in window) || songs.length === 0) {
+    return;
+  }
+  try {
+    const openReq = window.indexedDB.open(IDB_NAME, 1);
+    openReq.onupgradeneeded = () => {
+      const db = openReq.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE);
+      }
+    };
+    openReq.onsuccess = () => {
+      try {
+        const db = openReq.result;
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        const store = tx.objectStore(IDB_STORE);
+        const entry: CachedSongsEntry = { timestamp: Date.now(), songs };
+        store.put(entry, IDB_KEY);
+      } catch {
+        // ignore IndexedDB quota/write errors
+      }
+    };
+  } catch {
+    // ignore
+  }
+}
+
+export function getInstantCachedSongs(): Song[] {
+  if (clientSongsCache && clientSongsCache.length > 0) {
+    return clientSongsCache;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(SESSION_TOP_SONGS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed as Song[];
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return [];
+}
+
+function saveTopSongsSnapshot(songs: Song[]): void {
+  if (typeof window === 'undefined' || songs.length === 0) return;
+  try {
+    const topSlice = [...songs]
+      .sort((a, b) => (b.popularity_score || b.running_score || 0) - (a.popularity_score || a.running_score || 0))
+      .slice(0, 120);
+    localStorage.setItem(SESSION_TOP_SONGS_KEY, JSON.stringify(topSlice));
+  } catch {
+    // ignore storage quota errors
+  }
+}
+
 /**
- * Fetches all songs directly from Supabase REST API in parallel batches.
- * Bypasses Vercel Serverless Function's 4.5MB response body limit (`FUNCTION_PAYLOAD_TOO_LARGE`)
- * and streams an initial batch via `onProgress` so the UI renders artists & songs immediately.
+ * Fetches all songs directly from Supabase REST API in parallel batches,
+ * backed by a 3-tier cache (in-memory -> localStorage instant snapshot -> IndexedDB 24h full cache).
  */
 export async function fetchAllSongsFromSupabase(
   onProgress?: (partialSongs: Song[]) => void,
@@ -122,6 +226,27 @@ export async function fetchAllSongsFromSupabase(
   if (typeof window !== 'undefined' && clientSongsCache && clientSongsCache.length > 0) {
     onProgress?.(clientSongsCache);
     return clientSongsCache;
+  }
+
+  // Emit instant localStorage top-songs snapshot immediately (0ms) so Home screen is populated on first paint
+  if (typeof window !== 'undefined' && onProgress) {
+    const instant = getInstantCachedSongs();
+    if (instant.length > 0) {
+      onProgress(instant);
+    }
+  }
+
+  // Check IndexedDB full 22k song cache before hitting network
+  if (typeof window !== 'undefined') {
+    const idbCached = await readSongsFromIndexedDB();
+    if (idbCached && Array.isArray(idbCached.songs) && idbCached.songs.length > 1000) {
+      clientSongsCache = idbCached.songs;
+      onProgress?.(idbCached.songs);
+      // If cache is still fresh (< 24h), skip network completely!
+      if (Date.now() - idbCached.timestamp < IDB_TTL_MS) {
+        return idbCached.songs;
+      }
+    }
   }
 
   if (typeof window !== 'undefined' && clientFetchPromise) {
@@ -135,9 +260,9 @@ export async function fetchAllSongsFromSupabase(
     if (!url || !key) return [];
 
     const headers = getSupabaseHeaders(key);
-    const fetchPage = async (offset: number): Promise<Song[]> => {
-      const endpoint = `${url}/rest/v1/songs?select=${SONG_SELECT_COLUMNS}&order=id.asc&offset=${offset}&limit=1000`;
-      const res = await fetch(endpoint, { headers, cache: 'no-store' });
+    const fetchPage = async (offset: number, limit = 1000): Promise<Song[]> => {
+      const endpoint = `${url}/rest/v1/songs?select=${SONG_SELECT_COLUMNS}&order=id.asc&offset=${offset}&limit=${limit}`;
+      const res = await fetch(endpoint, { headers, cache: 'force-cache' });
       if (!res.ok) return [];
       const rows = await res.json();
       if (!Array.isArray(rows)) return [];
@@ -149,9 +274,16 @@ export async function fetchAllSongsFromSupabase(
       );
     };
 
+    // Wave 0: Ultra-fast 200-song initial batch so first-visit Home screen renders in <150ms
+    const wave0Songs = await fetchPage(0, 200);
+    if (wave0Songs.length > 0 && onProgress && !clientSongsCache) {
+      onProgress(wave0Songs);
+      saveTopSongsSnapshot(wave0Songs);
+    }
+
     // Wave 1: Fetch first 6,000 songs immediately for sub-second initial artist & playlist readiness
     const wave1Offsets = Array.from({ length: 6 }, (_, i) => i * 1000);
-    const wave1Pages = await Promise.all(wave1Offsets.map(fetchPage));
+    const wave1Pages = await Promise.all(wave1Offsets.map((off) => fetchPage(off, 1000)));
     const wave1Songs = wave1Pages.flat();
 
     if (wave1Songs.length === 0) {
@@ -164,11 +296,13 @@ export async function fetchAllSongsFromSupabase(
 
     // Wave 2: Fetch remaining pages (6,000 ~ 25,000) in parallel
     const wave2Offsets = Array.from({ length: 19 }, (_, i) => (i + 6) * 1000);
-    const wave2Pages = await Promise.all(wave2Offsets.map(fetchPage));
+    const wave2Pages = await Promise.all(wave2Offsets.map((off) => fetchPage(off, 1000)));
     const allSongs = [...wave1Songs, ...wave2Pages.flat()];
 
     if (typeof window !== 'undefined' && allSongs.length > 0) {
       clientSongsCache = allSongs;
+      saveTopSongsSnapshot(allSongs);
+      writeSongsToIndexedDB(allSongs);
     }
 
     return allSongs;

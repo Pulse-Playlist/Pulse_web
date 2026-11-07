@@ -140,7 +140,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     });
   }, [communityPlaylists, activeFilter]);
 
-  // Pool of tracks for the 4-row track grid (Section 2)
+    // Pool of tracks for the 4-row track grid (Section 2) — Single-pass O(N) top-16 selection
   const songsPool = useMemo(() => {
     let source: Song[] = [];
     if (allSongs && allSongs.length > 0) {
@@ -149,45 +149,51 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       source = communityPlaylists.flatMap((p) => p.songs || []);
     }
 
-    // Deduplicate songs
+    if (source.length === 0) return [];
+
+    const prefLower = (preferredArtists || []).map((pa) => pa.toLowerCase());
+    const hasPrefs = prefLower.length > 0;
     const seen = new Set<string>();
-    const unique: Song[] = [];
-    for (const song of source) {
+    const topK: { song: Song; score: number }[] = [];
+
+    for (let i = 0; i < source.length; i++) {
+      const song = source[i];
+      const bpm = song.running_bpm || song.raw_bpm || 150;
+      if (activeFilter === 'under130' && bpm > 130) continue;
+      if (activeFilter === '131to160' && (bpm <= 130 || bpm > 160)) continue;
+      if (activeFilter === 'over161' && bpm <= 160) continue;
+
       const key = song.normalized_key || `${song.artist}-${song.title}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        unique.push(song);
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      let isPref = false;
+      if (hasPrefs && song.artist) {
+        const artistLower = song.artist.toLowerCase();
+        for (let j = 0; j < prefLower.length; j++) {
+          if (artistLower.includes(prefLower[j])) {
+            isPref = true;
+            break;
+          }
+        }
+      }
+
+      const pop = song.popularity_score || song.running_score || 0;
+      const score = (isPref ? 100000 : 0) + pop;
+
+      if (topK.length < 16) {
+        topK.push({ song, score });
+        if (topK.length === 16) {
+          topK.sort((a, b) => b.score - a.score);
+        }
+      } else if (score > topK[15].score) {
+        topK[15] = { song, score };
+        topK.sort((a, b) => b.score - a.score);
       }
     }
 
-    // Filter by active BPM filter
-    const filtered = unique.filter((song) => {
-      const bpm = song.running_bpm || song.raw_bpm || 150;
-      if (activeFilter === 'under130') return bpm <= 130;
-      if (activeFilter === '131to160') return bpm > 130 && bpm <= 160;
-      if (activeFilter === 'over161') return bpm > 160;
-      return true;
-    });
-
-    // Prioritize preferred artists or high popularity
-    filtered.sort((a, b) => {
-      const aPref = preferredArtists?.some((pa) =>
-        a.artist?.toLowerCase().includes(pa.toLowerCase())
-      )
-        ? 1
-        : 0;
-      const bPref = preferredArtists?.some((pa) =>
-        b.artist?.toLowerCase().includes(pa.toLowerCase())
-      )
-        ? 1
-        : 0;
-      if (aPref !== bPref) return bPref - aPref;
-      const aPop = a.popularity_score || a.running_score || 0;
-      const bPop = b.popularity_score || b.running_score || 0;
-      return bPop - aPop;
-    });
-
-    return filtered.slice(0, 16);
+    topK.sort((a, b) => b.score - a.score);
+    return topK.map((item) => item.song);
   }, [allSongs, communityPlaylists, activeFilter, preferredArtists]);
 
   // Group into columns of 4 for the 4-row grid
@@ -612,7 +618,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 >
                   {/* Square Artwork */}
                   <div className="w-[148px] h-[148px] rounded-[18px] overflow-hidden relative bg-zinc-900 border border-black/5 dark:border-white/10 shadow-sm group-hover:scale-[1.02] transition-transform">
-                    <Image src={cover} alt={pl.name} fill className="object-cover" />
+                    <Image src={cover} alt={pl.name} fill className="object-cover" unoptimized />
 
                     {/* Top-left pill badge */}
                     <div className="absolute top-2 left-2">

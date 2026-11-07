@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Song, GenreTag, SongsResponse, AppLanguage, SavedPlaylist, getSongTitle } from '@/types/song';
 import { generatePlaylist, getRecommendedSongs } from '@/lib/playlistGenerator';
-import { fetchAllSongsFromSupabase } from '@/lib/supabaseSongs';
+import { fetchAllSongsFromSupabase, getInstantCachedSongs } from '@/lib/supabaseSongs';
 import { HomeScreen } from '@/components/HomeScreen';
 import { BpmScreen } from '@/components/BpmScreen';
 import { TapTempoScreen } from '@/components/TapTempoScreen';
@@ -347,8 +347,27 @@ export default function Page() {
     };
   }, [showToast]);
 
-  // Fetch community playlists
+  // Fetch community playlists (with instant localStorage cache + background refresh)
   useEffect(() => {
+    const PLAYLIST_CACHE_KEY = 'pulse_community_playlists_v1';
+    try {
+      const cached = localStorage.getItem(PLAYLIST_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCommunityPlaylists(parsed);
+        }
+      }
+    } catch {
+      // ignore localStorage read errors
+    }
+
+    // Also hydrate instant cached songs on mount so Home renders immediately with 0ms wait
+    const instantSongs = getInstantCachedSongs();
+    if (instantSongs.length > 0) {
+      setAllSongs((prev) => (prev.length > 0 ? prev : instantSongs));
+    }
+
     async function loadCommunityPlaylists() {
       try {
         const res = await fetch('/api/playlists');
@@ -356,6 +375,11 @@ export default function Page() {
           const data = await res.json();
           if (Array.isArray(data.playlists)) {
             setCommunityPlaylists(data.playlists);
+            try {
+              localStorage.setItem(PLAYLIST_CACHE_KEY, JSON.stringify(data.playlists));
+            } catch {
+              // ignore quota errors
+            }
           }
         }
       } catch (err) {
@@ -488,7 +512,15 @@ export default function Page() {
 
   // When a playlist is saved in PlaylistScreen, update local community feed
   const handleSavedToFeed = (saved: SavedPlaylist) => {
-    setCommunityPlaylists((prev) => [saved, ...prev.filter((p) => p.id !== saved.id)]);
+    setCommunityPlaylists((prev) => {
+      const next = [saved, ...prev.filter((p) => p.id !== saved.id)];
+      try {
+        localStorage.setItem('pulse_community_playlists_v1', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
   };
 
   // Play / Pause song preview handler

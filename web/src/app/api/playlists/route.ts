@@ -222,10 +222,17 @@ export async function GET(request: NextRequest) {
       playlists = playlists.filter((p) => p.categories.includes(category as GenreTag));
     }
 
-    return NextResponse.json({
-      playlists,
-      total: playlists.length,
-    });
+    return NextResponse.json(
+      {
+        playlists,
+        total: playlists.length,
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, max-age=30, stale-while-revalidate=300',
+        },
+      }
+    );
   } catch (err) {
     console.error('Error fetching playlists:', err);
     return NextResponse.json({ error: 'Failed to fetch playlists' }, { status: 500 });
