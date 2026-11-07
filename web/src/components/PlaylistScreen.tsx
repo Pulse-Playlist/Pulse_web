@@ -189,6 +189,12 @@ export const PlaylistScreen: React.FC<PlaylistScreenProps> = ({
         }),
       });
 
+      if (res.status === 429) {
+        const retry = res.headers.get('Retry-After') || '15';
+        window.location.href = `/rate-limit?retry=${retry}`;
+        return;
+      }
+
       if (!res.ok) {
         throw new Error('피드 저장에 실패했습니다');
       }

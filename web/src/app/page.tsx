@@ -500,11 +500,15 @@ export default function Page() {
     );
 
     try {
-      await fetch('/api/playlists', {
+      const res = await fetch('/api/playlists', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
+      if (res.status === 429) {
+        const retry = res.headers.get('Retry-After') || '15';
+        window.location.href = `/rate-limit?retry=${retry}`;
+      }
     } catch (err) {
       console.warn('Failed to PATCH likes:', err);
     }
@@ -830,7 +834,31 @@ export default function Page() {
         <Toast toast={toast} onClose={() => setToast(null)} />
 
         {/* 4-Step Screen Routing with Smooth Native Transitions */}
-        {isReady && (
+        {!isReady ? (
+          <div className="flex-1 flex flex-col px-5 pt-5 space-y-6 animate-pulse select-none">
+            <div className="flex items-end justify-between pt-2">
+              <div className="space-y-2">
+                <div className="w-24 h-3 rounded-full bg-zinc-200 dark:bg-zinc-800/80" />
+                <div className="w-16 h-8 rounded-xl bg-zinc-200 dark:bg-zinc-800/80" />
+              </div>
+              <div className="flex gap-2">
+                <div className="w-9 h-9 rounded-full bg-zinc-200 dark:bg-zinc-800/80" />
+                <div className="w-9 h-9 rounded-full bg-zinc-200 dark:bg-zinc-800/80" />
+                <div className="w-9 h-9 rounded-full bg-zinc-200 dark:bg-zinc-800/80" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="aspect-[3/4] rounded-[20px] bg-zinc-200/70 dark:bg-zinc-900/90" />
+              <div className="aspect-[3/4] rounded-[20px] bg-zinc-200/70 dark:bg-zinc-900/90" />
+            </div>
+            <div className="space-y-3">
+              <div className="w-40 h-5 rounded-lg bg-zinc-200 dark:bg-zinc-800/80" />
+              <div className="h-14 rounded-xl bg-zinc-100 dark:bg-zinc-900/70" />
+              <div className="h-14 rounded-xl bg-zinc-100 dark:bg-zinc-900/70" />
+              <div className="h-14 rounded-xl bg-zinc-100 dark:bg-zinc-900/70" />
+            </div>
+          </div>
+        ) : (
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
